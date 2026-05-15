@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "339462524180",
+    "project_id": "mobiledev-dee45",
+    "storage_bucket": "mobiledev-dee45.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:339462524180:android:edea09e93212d2a385c601",
+        "android_client_info": {
+          "package_name": "com.commissionapp.commission_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBSw_Pi1kbKMQeHkLX9JuarL50wTL7BBFY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,30 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isLnuEmail() {
+      return isSignedIn()
+        && request.auth.token.email is string
+        && request.auth.token.email.matches('.*@lnu\\.edu\\.ph$');
+    }
+
+    function isOwner(uid) {
+      return isLnuEmail() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read, create, update: if isOwner(uid);
+      allow delete: if false;
+    }
+
+    match /profiles/{uid} {
+      allow read: if isLnuEmail();
+      allow create, update: if isOwner(uid);
+      allow delete: if false;
+    }
+  }
+}
