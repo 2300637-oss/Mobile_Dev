@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthUser;
 
-import '../../data/firebase_auth_repository.dart';
 import '../../domain/auth_repository.dart';
 import '../../domain/auth_user.dart';
 
@@ -45,7 +45,9 @@ class AuthController extends ChangeNotifier {
   Future<bool> register({
     required String fullName,
     required String studentId,
-    required String collegeDepartment,
+    required String college,
+    required String department,
+    required String yearLevel,
     required String username,
     required String email,
     required String password,
@@ -54,7 +56,9 @@ class AuthController extends ChangeNotifier {
       () => _authRepository.registerWithEmailAndPassword(
         fullName: fullName,
         studentId: studentId,
-        collegeDepartment: collegeDepartment,
+        college: college,
+        department: department,
+        yearLevel: yearLevel,
         username: username,
         email: email,
         password: password,
@@ -114,6 +118,51 @@ class AuthController extends ChangeNotifier {
   }
 
   String _messageForError(Object error) {
+    if (error is AuthException) {
+      final message = error.message.trim();
+      final lowerMessage = message.toLowerCase();
+
+      if (lowerMessage.contains('user already registered') ||
+          lowerMessage.contains('already registered')) {
+        return 'That email is already registered. Try logging in instead.';
+      }
+      if (lowerMessage.contains('signup') &&
+          lowerMessage.contains('disabled')) {
+        return 'Email signup is disabled in Supabase. Open Authentication > Providers > Email and enable signup.';
+      }
+      if (lowerMessage.contains('invalid login credentials')) {
+        return 'The email or password is incorrect.';
+      }
+      if (lowerMessage.contains('email not confirmed')) {
+        return 'Please verify your email first. Open the confirmation link sent to your LNU inbox.';
+      }
+      if (lowerMessage.contains('rate limit') ||
+          lowerMessage.contains('too many')) {
+        return 'Supabase is rate limiting email sends. Please wait a few minutes, then try again.';
+      }
+      if (lowerMessage.contains('invalid email')) {
+        return 'Enter a valid LNU email address ending with @lnu.edu.ph.';
+      }
+
+      return message.isEmpty
+          ? 'Supabase authentication failed. Please try again.'
+          : message;
+    }
+
+    if (error is PostgrestException) {
+      final message = error.message.trim();
+      if (message.contains('relation') && message.contains('does not exist')) {
+        return 'Supabase database tables are missing. Run supabase_schema.sql in the Supabase SQL Editor first.';
+      }
+      if (error.code == '42501' ||
+          message.toLowerCase().contains('row-level security')) {
+        return 'Supabase blocked this request with RLS. Check the policies from supabase_schema.sql.';
+      }
+      return message.isEmpty
+          ? 'Supabase database request failed. Please try again.'
+          : message;
+    }
+
     if (error is FirebaseAuthException) {
       final message = error.message ?? '';
       if (message.contains('CONFIGURATION_NOT_FOUND')) {

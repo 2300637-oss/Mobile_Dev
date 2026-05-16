@@ -1,23 +1,25 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app.dart';
-import 'features/auth/data/firebase_auth_repository.dart';
-import 'firebase_options.dart';
+import 'app/supabase_config.dart';
+import 'app/supabase_setup_screen.dart';
+import 'features/auth/data/supabase_auth_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  if (!SupabaseConfig.isConfigured) {
+    runApp(const SupabaseSetupScreen());
+    return;
+  }
 
-  runApp(
-    CommissionApp(
-      authRepository: FirebaseAuthRepository(
-        firebaseAuth: FirebaseAuth.instance,
-        firestore: FirebaseFirestore.instance,
-      ),
-    ),
+  await Supabase.initialize(
+    url: SupabaseConfig.url,
+    anonKey: SupabaseConfig.anonKey,
   );
+
+  final client = Supabase.instance.client;
+
+  runApp(CommissionApp(authRepository: SupabaseAuthRepository(client: client)));
 }

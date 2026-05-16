@@ -24,7 +24,9 @@ Firebase:
 - Profile picture
 - Full name
 - Student ID
-- College/Department
+- College
+- Department
+- Year level
 - Username
 - Bio/About
 - Skills/categories

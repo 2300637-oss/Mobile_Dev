@@ -33,7 +33,7 @@ class ModulePlaceholderScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 64, color: AppColors.royalAzure),
+              Icon(icon, size: 64, color: AppColors.regalNavy),
               const SizedBox(height: 20),
               Text(
                 title,
