@@ -1,0 +1,19 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isLnuEmail() {
+      return request.auth != null
+        && request.auth.token.email is string
+        && request.auth.token.email.matches('.*@lnu\\.edu\\.ph$');
+    }
+
+    match /posts/{userId}/{fileName} {
+      allow read: if isLnuEmail();
+      allow write: if isLnuEmail()
+        && request.auth.uid == userId
+        && request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType.matches('(image|video)/.*');
+    }
+  }
+}

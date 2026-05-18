@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../auth/presentation/widgets/auth_error_banner.dart';
+import '../../../posts/data/public_post_repository.dart';
+import '../../../posts/data/supabase_public_post_repository.dart';
+import '../../../posts/domain/public_post.dart';
 import '../../domain/user_profile.dart';
 import '../controllers/profile_controller.dart';
 
@@ -17,7 +21,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
   final _studentIdController = TextEditingController();
-  final _collegeDepartmentController = TextEditingController();
+  final _collegeController = TextEditingController();
+  final _departmentController = TextEditingController();
+  final _yearLevelController = TextEditingController();
   final _usernameController = TextEditingController();
   final _bioController = TextEditingController();
   final _skillsController = TextEditingController();
@@ -28,7 +34,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void dispose() {
     _fullNameController.dispose();
     _studentIdController.dispose();
-    _collegeDepartmentController.dispose();
+    _collegeController.dispose();
+    _departmentController.dispose();
+    _yearLevelController.dispose();
     _usernameController.dispose();
     _bioController.dispose();
     _skillsController.dispose();
@@ -39,6 +47,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final controller = context.watch<ProfileController>();
     final profile = controller.profile;
+    final postsRepository = SupabasePublicPostRepository(
+      client: Supabase.instance.client,
+    );
 
     if (profile != null && _loadedUid != profile.uid) {
       _syncControllers(profile);
@@ -100,12 +111,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
-                        controller: _collegeDepartmentController,
+                        controller: _collegeController,
                         decoration: const InputDecoration(
-                          labelText: 'College/Department',
+                          labelText: 'College',
                           prefixIcon: Icon(Icons.apartment_outlined),
                         ),
-                        validator: _required('College/Department'),
+                        validator: _required('College'),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _departmentController,
+                        decoration: const InputDecoration(
+                          labelText: 'Department',
+                          prefixIcon: Icon(Icons.account_balance_outlined),
+                        ),
+                        validator: _required('Department'),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _yearLevelController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Year level',
+                          prefixIcon: Icon(Icons.stacked_line_chart_outlined),
+                        ),
+                        validator: _required('Year level'),
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -175,6 +205,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 16),
                       const _PortfolioPlaceholder(),
+                      if (profile != null) ...[
+                        const SizedBox(height: 24),
+                        _PersonalPostsSection(
+                          profile: profile,
+                          postsRepository: postsRepository,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -187,7 +224,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadedUid = profile.uid;
     _fullNameController.text = profile.fullName;
     _studentIdController.text = profile.studentId;
-    _collegeDepartmentController.text = profile.collegeDepartment;
+    _collegeController.text = profile.college;
+    _departmentController.text = profile.department;
+    _yearLevelController.text = profile.yearLevel;
     _usernameController.text = profile.username;
     _bioController.text = profile.bio;
     _skillsController.text = profile.skills.join(', ');
@@ -211,7 +250,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         profilePictureUrl: profile.profilePictureUrl,
         fullName: _fullNameController.text.trim(),
         studentId: _studentIdController.text.trim(),
-        collegeDepartment: _collegeDepartmentController.text.trim(),
+        college: _collegeController.text.trim(),
+        department: _departmentController.text.trim(),
+        yearLevel: _yearLevelController.text.trim(),
         username: _usernameController.text.trim(),
         bio: _bioController.text.trim(),
         skills: _skillsController.text
@@ -281,9 +322,9 @@ class _ProfileHeader extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                profile?.collegeDepartment.isNotEmpty == true
-                    ? profile!.collegeDepartment
-                    : 'Add your department',
+                profile?.department.isNotEmpty == true
+                    ? '${profile!.college} - ${profile!.department} - ${profile!.yearLevel}'
+                    : 'Add your college, department, and year level',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
@@ -316,6 +357,264 @@ class _PortfolioPlaceholder extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PersonalPostsSection extends StatelessWidget {
+  const _PersonalPostsSection({
+    required this.profile,
+    required this.postsRepository,
+  });
+
+  final UserProfile profile;
+  final PublicPostDataSource postsRepository;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _PostListSection(
+          title: 'Shared posts',
+          emptyMessage: 'Open all posts you shared.',
+          stream: postsRepository.watchSharedPostsByUser(profile.uid),
+          summaryOnly: true,
+          onOpen: () => context.go('/users/${profile.uid}/shared-posts'),
+        ),
+        const SizedBox(height: 20),
+        _PostListSection(
+          title: 'My posts',
+          emptyMessage: 'Posts you create will appear here.',
+          stream: postsRepository.watchPostsByAuthor(profile.uid),
+        ),
+      ],
+    );
+  }
+}
+
+class _PostListSection extends StatelessWidget {
+  const _PostListSection({
+    required this.title,
+    required this.emptyMessage,
+    required this.stream,
+    this.summaryOnly = false,
+    this.onOpen,
+  });
+
+  final String title;
+  final String emptyMessage;
+  final Stream<List<PublicPost>> stream;
+  final bool summaryOnly;
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<PublicPost>>(
+      stream: stream,
+      builder: (context, snapshot) {
+        final posts = snapshot.data ?? const <PublicPost>[];
+        final countLabel = snapshot.connectionState == ConnectionState.waiting
+            ? 'Loading...'
+            : posts.length == 1
+            ? '1 post'
+            : '${posts.length} posts';
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 8),
+            if (snapshot.connectionState == ConnectionState.waiting)
+              const Center(child: CircularProgressIndicator())
+            else if (summaryOnly)
+              _OpenSharedPostsTile(
+                countLabel: countLabel,
+                emptyMessage: emptyMessage,
+                onOpen: onOpen,
+              )
+            else if (posts.isEmpty)
+              _EmptyProfilePosts(message: emptyMessage)
+            else
+              ...posts.map((post) => _ProfilePostTile(post: post)),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _OpenSharedPostsTile extends StatelessWidget {
+  const _OpenSharedPostsTile({
+    required this.countLabel,
+    required this.emptyMessage,
+    required this.onOpen,
+  });
+
+  final String countLabel;
+  final String emptyMessage;
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onOpen,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const Icon(Icons.share_outlined),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      countLabel,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(emptyMessage),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfilePostTile extends StatelessWidget {
+  const _ProfilePostTile({required this.post});
+
+  final PublicPost post;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(8),
+              image: post.mediaUrls.isNotEmpty && !post.hasVideo
+                  ? DecorationImage(
+                      image: NetworkImage(post.mediaUrls.first),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: post.mediaUrls.isEmpty || post.hasVideo
+                ? Icon(
+                    post.hasVideo
+                        ? Icons.play_circle_outline
+                        : Icons.article_outlined,
+                  )
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  post.type,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  post.caption,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _MiniStat(icon: Icons.favorite, value: post.heartCount),
+                    const SizedBox(width: 12),
+                    _MiniStat(
+                      icon: Icons.remove_red_eye_outlined,
+                      value: post.viewCount,
+                    ),
+                    const SizedBox(width: 12),
+                    _MiniStat(
+                      icon: Icons.share_outlined,
+                      value: post.shareCount,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  const _MiniStat({required this.icon, required this.value});
+
+  final IconData icon;
+  final int value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: Colors.black54),
+        const SizedBox(width: 3),
+        Text(
+          '$value',
+          style: const TextStyle(
+            color: Colors.black54,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmptyProfilePosts extends StatelessWidget {
+  const _EmptyProfilePosts({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(padding: const EdgeInsets.all(16), child: Text(message)),
     );
   }
 }

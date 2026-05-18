@@ -36,7 +36,9 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<AuthUser> registerWithEmailAndPassword({
     required String fullName,
     required String studentId,
-    required String collegeDepartment,
+    required String college,
+    required String department,
+    required String yearLevel,
     required String username,
     required String email,
     required String password,
@@ -53,7 +55,9 @@ class FirebaseAuthRepository implements AuthRepository {
     final user = _requireUser(credential.user);
     final trimmedName = fullName.trim();
     final trimmedStudentId = studentId.trim();
-    final trimmedCollegeDepartment = collegeDepartment.trim();
+    final trimmedCollege = college.trim();
+    final trimmedDepartment = department.trim();
+    final trimmedYearLevel = yearLevel.trim();
     final trimmedUsername = username.trim();
 
     await credential.user!.updateDisplayName(trimmedName);
@@ -63,7 +67,9 @@ class FirebaseAuthRepository implements AuthRepository {
       'email': user.email,
       'fullName': trimmedName,
       'studentId': trimmedStudentId,
-      'collegeDepartment': trimmedCollegeDepartment,
+      'college': trimmedCollege,
+      'department': trimmedDepartment,
+      'yearLevel': trimmedYearLevel,
       'username': trimmedUsername,
       'role': 'user',
       'emailVerified': credential.user!.emailVerified,
@@ -76,7 +82,9 @@ class FirebaseAuthRepository implements AuthRepository {
       'profilePictureUrl': '',
       'fullName': trimmedName,
       'studentId': trimmedStudentId,
-      'collegeDepartment': trimmedCollegeDepartment,
+      'college': trimmedCollege,
+      'department': trimmedDepartment,
+      'yearLevel': trimmedYearLevel,
       'username': trimmedUsername,
       'bio': '',
       'skills': <String>[],
@@ -146,13 +154,4 @@ class FirebaseAuthRepository implements AuthRepository {
       displayName: user.displayName,
     );
   }
-}
-
-class AuthFailure implements Exception {
-  const AuthFailure(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
 }
