@@ -1,7 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app_colors.dart';
 import '../features/auth/domain/auth_repository.dart';
@@ -10,11 +10,17 @@ import '../features/auth/presentation/screens/email_verification_screen.dart';
 import '../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/register_screen.dart';
+import '../features/auth/presentation/screens/registration_complete_screen.dart';
 import '../features/auth/presentation/screens/splash_screen.dart';
 import '../features/home/presentation/screens/home_screen.dart';
-import '../features/profile/data/profile_repository.dart';
+import '../features/posts/data/supabase_public_post_repository.dart';
+import '../features/posts/presentation/controllers/create_post_controller.dart';
+import '../features/posts/presentation/screens/create_post_screen.dart';
+import '../features/profile/data/supabase_profile_repository.dart';
 import '../features/profile/presentation/controllers/profile_controller.dart';
 import '../features/profile/presentation/screens/profile_screen.dart';
+import '../features/profile/presentation/screens/public_profile_screen.dart';
+import '../features/profile/presentation/screens/shared_posts_screen.dart';
 import '../features/shared/presentation/screens/module_placeholder_screen.dart';
 
 class CommissionApp extends StatefulWidget {
@@ -53,10 +59,10 @@ class _CommissionAppState extends State<CommissionApp> {
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
-            seedColor: AppColors.midnightBlue,
-            primary: AppColors.midnightBlue,
+            seedColor: AppColors.navy,
+            primary: AppColors.navy,
             secondary: AppColors.schoolBusYellow,
-            error: AppColors.mahoganyRed,
+            error: AppColors.cinnabar,
             surface: AppColors.white,
           ),
           scaffoldBackgroundColor: AppColors.white,
@@ -90,21 +96,35 @@ GoRouter _buildRouter(AuthController authController) {
       final isSignedIn = user != null;
       final isEmailVerified = user?.emailVerified ?? false;
       final location = state.matchedLocation;
+      final isEmailCallback =
+          state.uri.queryParameters.containsKey('code') ||
+          state.uri.fragment.contains('access_token');
       final isAuthRoute =
           location == '/login' ||
           location == '/register' ||
           location == '/forgot-password';
       final isVerificationRoute = location == '/verify-email';
+      final isRegistrationCompleteRoute = location == '/registration-complete';
 
       if (isInitializing) {
-        return location == '/splash' ? null : '/splash';
+        return (location == '/splash' || isEmailCallback) ? null : '/splash';
       }
 
-      if (!isSignedIn && !isAuthRoute) {
+      if (isEmailCallback && isSignedIn && isEmailVerified) {
+        return '/registration-complete';
+      }
+
+      if (!isSignedIn &&
+          !isAuthRoute &&
+          !isRegistrationCompleteRoute &&
+          !isEmailCallback) {
         return '/login';
       }
 
-      if (isSignedIn && !isEmailVerified && !isVerificationRoute) {
+      if (isSignedIn &&
+          !isEmailVerified &&
+          !isVerificationRoute &&
+          !isRegistrationCompleteRoute) {
         return '/verify-email';
       }
 
@@ -134,14 +154,21 @@ GoRouter _buildRouter(AuthController authController) {
         path: '/verify-email',
         builder: (context, state) => const EmailVerificationScreen(),
       ),
+      GoRoute(
+        path: '/registration-complete',
+        builder: (context, state) => const RegistrationCompleteScreen(),
+      ),
+      GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
       GoRoute(
         path: '/create-post',
-        builder: (context, state) => const ModulePlaceholderScreen(
-          title: 'Create Post',
-          icon: Icons.add_photo_alternate_outlined,
-          message:
-              'Post composer for artwork, commission updates, and announcements.',
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (_) => CreatePostController(
+            repository: SupabasePublicPostRepository(
+              client: Supabase.instance.client,
+            ),
+          ),
+          child: const CreatePostScreen(),
         ),
       ),
       GoRoute(
@@ -154,12 +181,52 @@ GoRouter _buildRouter(AuthController authController) {
 
           return ChangeNotifierProvider(
             create: (_) => ProfileController(
-              profileRepository: ProfileRepository(
-                firestore: FirebaseFirestore.instance,
+              profileRepository: SupabaseProfileRepository(
+                client: Supabase.instance.client,
               ),
               uid: user.id,
             )..start(),
             child: const ProfileScreen(),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/users/:uid',
+        builder: (context, state) {
+          final uid = state.pathParameters['uid'] ?? '';
+          if (uid.isEmpty) {
+            return const SplashScreen();
+          }
+
+          final supabaseClient = Supabase.instance.client;
+          return ChangeNotifierProvider(
+            create: (_) => ProfileController(
+              profileRepository: SupabaseProfileRepository(
+                client: supabaseClient,
+              ),
+              uid: uid,
+            )..start(),
+            child: PublicProfileScreen(
+              postsRepository: SupabasePublicPostRepository(
+                client: supabaseClient,
+              ),
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/users/:uid/shared-posts',
+        builder: (context, state) {
+          final uid = state.pathParameters['uid'] ?? '';
+          if (uid.isEmpty) {
+            return const SplashScreen();
+          }
+
+          return SharedPostsScreen(
+            userId: uid,
+            postsRepository: SupabasePublicPostRepository(
+              client: Supabase.instance.client,
+            ),
           );
         },
       ),

@@ -11,7 +11,9 @@ abstract class AuthRepository {
   Future<AuthUser> registerWithEmailAndPassword({
     required String fullName,
     required String studentId,
-    required String collegeDepartment,
+    required String college,
+    required String department,
+    required String yearLevel,
     required String username,
     required String email,
     required String password,
@@ -24,4 +26,13 @@ abstract class AuthRepository {
   Future<AuthUser?> reloadCurrentUser();
 
   Future<void> signOut();
+}
+
+class AuthFailure implements Exception {
+  const AuthFailure(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }

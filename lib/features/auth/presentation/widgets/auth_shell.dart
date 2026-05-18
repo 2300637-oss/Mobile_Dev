@@ -17,14 +17,14 @@ class AuthShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.midnightBlue,
+      backgroundColor: AppColors.navy,
       body: SafeArea(
         child: DecoratedBox(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [AppColors.midnightBlue, AppColors.inkBlack],
+              colors: [AppColors.navy, AppColors.inkBlack],
             ),
           ),
           child: Center(
@@ -100,11 +100,11 @@ class AuthShell extends StatelessWidget {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(8)),
-          borderSide: BorderSide(color: AppColors.mahoganyRed, width: 1),
+          borderSide: BorderSide(color: AppColors.cinnabar, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(8)),
-          borderSide: BorderSide(color: AppColors.mahoganyRed, width: 2),
+          borderSide: BorderSide(color: AppColors.cinnabar, width: 2),
         ),
         labelStyle: TextStyle(color: Color(0xFF3D4657)),
         hintStyle: TextStyle(color: Color(0xFF6C7280)),

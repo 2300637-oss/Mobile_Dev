@@ -1,19 +1,23 @@
 import 'dart:async';
 
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../data/profile_repository.dart';
 import '../../domain/user_profile.dart';
+
+abstract class ProfileDataSource {
+  Stream<UserProfile> watchProfile(String uid);
+
+  Future<void> updateProfile(UserProfile profile);
+}
 
 class ProfileController extends ChangeNotifier {
   ProfileController({
-    required ProfileRepository profileRepository,
+    required ProfileDataSource profileRepository,
     required String uid,
   }) : _profileRepository = profileRepository,
        _uid = uid;
 
-  final ProfileRepository _profileRepository;
+  final ProfileDataSource _profileRepository;
   final String _uid;
   StreamSubscription<UserProfile>? _profileSubscription;
 
@@ -63,14 +67,7 @@ class ProfileController extends ChangeNotifier {
   }
 
   String _messageForError(Object error) {
-    if (error is FirebaseException) {
-      if (error.code == 'permission-denied') {
-        return 'Firestore rejected this profile update. Check your profiles security rules.';
-      }
-      return error.message ?? 'Firebase failed. Please try again.';
-    }
-
-    return 'Something went wrong. Please try again.';
+    return 'Unable to update profile. Please try again.';
   }
 
   @override
