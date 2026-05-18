@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'app_colors.dart';
 import '../features/admin/admin_dashboard_page.dart';
+import '../features/admin/admin_guard.dart';
 import '../features/auth/domain/auth_repository.dart';
 import '../features/auth/presentation/controllers/auth_controller.dart';
 import '../features/auth/presentation/screens/email_verification_screen.dart';
@@ -91,11 +92,16 @@ GoRouter _buildRouter(AuthController authController) {
       final isSignedIn = user != null;
       final isEmailVerified = user?.emailVerified ?? false;
       final location = state.matchedLocation;
+      final isAdminRoute = location.startsWith('/admin/');
       final isAuthRoute =
           location == '/login' ||
           location == '/register' ||
           location == '/forgot-password';
       final isVerificationRoute = location == '/verify-email';
+
+      if (isAdminRoute) {
+        return null;
+      }
 
       if (isInitializing) {
         return location == '/splash' ? null : '/splash';
@@ -138,7 +144,8 @@ GoRouter _buildRouter(AuthController authController) {
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
       GoRoute(
         path: '/admin/dashboard',
-        builder: (context, state) => const AdminDashboardPage(),
+        builder: (context, state) =>
+            const AdminGuard(child: AdminDashboardPage()),
       ),
       GoRoute(
         path: '/create-post',
