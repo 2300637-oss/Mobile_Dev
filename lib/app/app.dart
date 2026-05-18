@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'app_colors.dart';
+import '../features/admin/admin_dashboard_page.dart';
 import '../features/auth/domain/auth_repository.dart';
 import '../features/auth/presentation/controllers/auth_controller.dart';
 import '../features/auth/presentation/screens/email_verification_screen.dart';
@@ -135,6 +136,10 @@ GoRouter _buildRouter(AuthController authController) {
         builder: (context, state) => const EmailVerificationScreen(),
       ),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+      GoRoute(
+        path: '/admin/dashboard',
+        builder: (context, state) => const AdminDashboardPage(),
+      ),
       GoRoute(
         path: '/create-post',
         builder: (context, state) => const ModulePlaceholderScreen(
