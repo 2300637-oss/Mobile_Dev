@@ -18,6 +18,7 @@ import '../features/home/presentation/screens/home_screen.dart';
 import '../features/posts/data/supabase_public_post_repository.dart';
 import '../features/posts/presentation/controllers/create_post_controller.dart';
 import '../features/posts/presentation/screens/create_post_screen.dart';
+import '../features/profile/data/local_profile_repository.dart';
 import '../features/profile/data/supabase_profile_repository.dart';
 import '../features/profile/presentation/controllers/profile_controller.dart';
 import '../features/profile/presentation/screens/profile_screen.dart';
@@ -26,9 +27,16 @@ import '../features/profile/presentation/screens/shared_posts_screen.dart';
 import '../features/shared/presentation/screens/module_placeholder_screen.dart';
 
 class CommissionApp extends StatefulWidget {
-  const CommissionApp({super.key, required this.authRepository});
+  const CommissionApp({
+    super.key,
+    required this.authRepository,
+    this.useStaticLogin = true,
+    this.requireEmailVerification = false,
+  });
 
   final AuthRepository authRepository;
+  final bool useStaticLogin;
+  final bool requireEmailVerification;
 
   @override
   State<CommissionApp> createState() => _CommissionAppState();
@@ -41,7 +49,11 @@ class _CommissionAppState extends State<CommissionApp> {
   @override
   void initState() {
     super.initState();
-    _authController = AuthController(widget.authRepository)..start();
+    _authController = AuthController(
+      widget.authRepository,
+      useStaticLogin: widget.useStaticLogin,
+      requireEmailVerification: widget.requireEmailVerification,
+    )..start();
     _router = _buildRouter(_authController);
   }
 
@@ -57,7 +69,7 @@ class _CommissionAppState extends State<CommissionApp> {
     return ChangeNotifierProvider.value(
       value: _authController,
       child: MaterialApp.router(
-        title: 'LNU SkillHub',
+        title: 'LNU Skills Commission',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
@@ -96,7 +108,9 @@ GoRouter _buildRouter(AuthController authController) {
       final isInitializing = authController.isInitializing;
       final user = authController.currentUser;
       final isSignedIn = user != null;
-      final isEmailVerified = user?.emailVerified ?? false;
+      final requiresEmailVerification = authController.requireEmailVerification;
+      final isEmailVerified =
+          !requiresEmailVerification || (user?.emailVerified ?? false);
       final location = state.matchedLocation;
       final isAdminRoute = location.startsWith('/admin/');
       final isEmailCallback =
@@ -129,6 +143,7 @@ GoRouter _buildRouter(AuthController authController) {
       }
 
       if (isSignedIn &&
+          requiresEmailVerification &&
           !isEmailVerified &&
           !isVerificationRoute &&
           !isRegistrationCompleteRoute) {
@@ -193,9 +208,11 @@ GoRouter _buildRouter(AuthController authController) {
 
           return ChangeNotifierProvider(
             create: (_) => ProfileController(
-              profileRepository: SupabaseProfileRepository(
-                client: Supabase.instance.client,
-              ),
+              profileRepository: authController.useStaticLogin
+                  ? LocalProfileRepository(
+                      initialProfile: authController.staticProfile,
+                    )
+                  : SupabaseProfileRepository(client: Supabase.instance.client),
               uid: user.id,
             )..start(),
             child: const ProfileScreen(),

@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.commissionapp" "\0"
-            VALUE "FileDescription", "commission_app" "\0"
+            VALUE "FileDescription", "LNU Skills Commission" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "commission_app" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.commissionapp. All rights reserved." "\0"
             VALUE "OriginalFilename", "commission_app.exe" "\0"
-            VALUE "ProductName", "commission_app" "\0"
+            VALUE "ProductName", "LNU Skills Commission" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

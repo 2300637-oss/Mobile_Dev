@@ -332,18 +332,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    await authController.signOut();
-    if (!mounted) {
-      return;
+    if (authController.requireEmailVerification) {
+      await authController.signOut();
+      if (!mounted) {
+        return;
+      }
+
+      context.go('/login');
+    } else {
+      context.go('/home');
     }
 
-    context.go('/login');
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(
-            'Registration successful. Verification link sent to $email.',
+            authController.requireEmailVerification
+                ? 'Registration successful. Verification link sent to $email.'
+                : 'Registration successful. You are logged in as $email.',
           ),
         ),
       );

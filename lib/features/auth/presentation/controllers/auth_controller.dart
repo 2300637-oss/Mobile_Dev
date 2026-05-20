@@ -6,19 +6,42 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide AuthUser;
 
 import '../../domain/auth_repository.dart';
 import '../../domain/auth_user.dart';
+import '../../../profile/domain/user_profile.dart';
 
 class AuthController extends ChangeNotifier {
-  AuthController(this._authRepository);
+  AuthController(
+    this._authRepository, {
+    this.useStaticLogin = true,
+    this.requireEmailVerification = false,
+  });
+
+  static const AuthUser _staticUser = AuthUser(
+    id: '00000000-0000-4000-8000-000000000001',
+    email: 'student@lnu.edu.ph',
+    emailVerified: true,
+    displayName: 'LNU Student',
+  );
 
   final AuthRepository _authRepository;
+  final bool useStaticLogin;
+  final bool requireEmailVerification;
   StreamSubscription<AuthUser?>? _authSubscription;
 
   AuthUser? currentUser;
   bool isInitializing = true;
   bool isBusy = false;
   String? errorMessage;
+  UserProfile? staticProfile;
 
   void start() {
+    if (useStaticLogin) {
+      currentUser = _staticUser;
+      staticProfile = UserProfile.empty(_staticUser.id);
+      isInitializing = false;
+      notifyListeners();
+      return;
+    }
+
     _authSubscription = _authRepository.authStateChanges().listen(
       (user) {
         currentUser = user;
@@ -34,6 +57,18 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<bool> signIn({required String email, required String password}) async {
+    if (useStaticLogin) {
+      isBusy = true;
+      errorMessage = null;
+      notifyListeners();
+
+      currentUser = _staticUser;
+      staticProfile ??= UserProfile.empty(_staticUser.id);
+      isBusy = false;
+      notifyListeners();
+      return true;
+    }
+
     return _runAuthAction(
       () => _authRepository.signInWithEmailAndPassword(
         email: email,
@@ -52,8 +87,42 @@ class AuthController extends ChangeNotifier {
     required String email,
     required String password,
   }) async {
-    return _runAuthAction(
-      () => _authRepository.registerWithEmailAndPassword(
+    if (useStaticLogin) {
+      final user = AuthUser(
+        id: _staticIdFromEmail(email),
+        email: email.trim().toLowerCase(),
+        emailVerified: true,
+        displayName: username.trim().isEmpty
+            ? fullName.trim()
+            : username.trim(),
+      );
+
+      currentUser = user;
+      staticProfile = UserProfile(
+        uid: user.id,
+        profilePictureUrl: '',
+        fullName: fullName.trim(),
+        studentId: studentId.trim(),
+        college: college.trim(),
+        department: department.trim(),
+        yearLevel: yearLevel.trim(),
+        username: username.trim(),
+        bio: '',
+        skills: const [],
+        portfolioGallery: const [],
+        availabilityStatus: 'available',
+      );
+      errorMessage = null;
+      notifyListeners();
+      return true;
+    }
+
+    isBusy = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final registeredUser = await _authRepository.registerWithEmailAndPassword(
         fullName: fullName,
         studentId: studentId,
         college: college,
@@ -62,8 +131,18 @@ class AuthController extends ChangeNotifier {
         username: username,
         email: email,
         password: password,
-      ),
-    );
+      );
+      if (!requireEmailVerification) {
+        currentUser = registeredUser;
+      }
+      return true;
+    } catch (error) {
+      errorMessage = _messageForError(error);
+      return false;
+    } finally {
+      isBusy = false;
+      notifyListeners();
+    }
   }
 
   Future<bool> sendPasswordResetEmail(String email) async {
@@ -92,6 +171,14 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    if (useStaticLogin) {
+      currentUser = null;
+      staticProfile = null;
+      errorMessage = null;
+      notifyListeners();
+      return;
+    }
+
     await _runAuthAction(_authRepository.signOut);
   }
 
@@ -115,6 +202,20 @@ class AuthController extends ChangeNotifier {
       isBusy = false;
       notifyListeners();
     }
+  }
+
+  String _staticIdFromEmail(String email) {
+    final normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail.isEmpty) {
+      return _staticUser.id;
+    }
+
+    final hash = normalizedEmail.codeUnits.fold<int>(
+      0,
+      (value, codeUnit) => ((value * 31) + codeUnit) & 0x7fffffff,
+    );
+    final suffix = hash.toRadixString(16).padLeft(12, '0');
+    return '00000000-0000-4000-8000-$suffix';
   }
 
   String _messageForError(Object error) {
