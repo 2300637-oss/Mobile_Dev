@@ -21,7 +21,13 @@ class SharedPostsScreen extends StatelessWidget {
       appBar: AppBar(
         leading: IconButton(
           tooltip: 'Back',
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/profile');
+            }
+          },
           icon: const Icon(Icons.arrow_back),
         ),
         title: const Text('Shared posts'),
