@@ -681,7 +681,7 @@ class _PostStatsState extends State<_PostStats> {
       await SharePlus.instance.share(
         ShareParams(
           text:
-              '${widget.post.authorName} on LNU SkillHub: ${widget.post.caption}',
+              '${widget.post.authorName} on LNU Skills Commission: ${widget.post.caption}',
         ),
       );
     } catch (_) {

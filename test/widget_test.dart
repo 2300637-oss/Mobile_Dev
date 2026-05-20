@@ -7,7 +7,11 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   testWidgets('shows login screen for signed out users', (tester) async {
     await tester.pumpWidget(
-      CommissionApp(authRepository: _FakeAuthRepository()),
+      CommissionApp(
+        authRepository: _FakeAuthRepository(),
+        useStaticLogin: false,
+        requireEmailVerification: true,
+      ),
     );
     await tester.pumpAndSettle();
 
