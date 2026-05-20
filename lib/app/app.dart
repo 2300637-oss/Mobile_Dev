@@ -24,10 +24,11 @@ import '../features/home/presentation/screens/home_screen.dart';
 import '../features/posts/data/supabase_public_post_repository.dart';
 import '../features/posts/presentation/controllers/create_post_controller.dart';
 import '../features/posts/presentation/screens/create_post_screen.dart';
-import '../features/profile/data/local_profile_repository.dart';
 import '../features/profile/data/supabase_profile_repository.dart';
+import '../features/profile/data/mock_profile_data.dart';
+import '../features/profile/data/supabase_student_profile_repository.dart';
 import '../features/profile/presentation/controllers/profile_controller.dart';
-import '../features/profile/presentation/screens/profile_screen.dart';
+import '../features/profile/presentation/student_profile_page.dart';
 import '../features/profile/presentation/screens/public_profile_screen.dart';
 import '../features/profile/presentation/screens/shared_posts_screen.dart';
 import '../features/shared/presentation/screens/module_placeholder_screen.dart';
@@ -252,16 +253,14 @@ GoRouter _buildRouter(AuthController authController) {
             return const SplashScreen();
           }
 
-          return ChangeNotifierProvider(
-            create: (_) => ProfileController(
-              profileRepository: authController.useStaticLogin
-                  ? LocalProfileRepository(
-                      initialProfile: authController.staticProfile,
-                    )
-                  : SupabaseProfileRepository(client: Supabase.instance.client),
-              uid: user.id,
-            )..start(),
-            child: const ProfileScreen(),
+          return StudentProfilePage(
+            currentUserId: user.id,
+            currentUserEmail: user.email,
+            repository: authController.useStaticLogin
+                ? MockProfileRepository()
+                : SupabaseStudentProfileRepository(
+                    client: Supabase.instance.client,
+                  ),
           );
         },
       ),
