@@ -257,6 +257,9 @@ GoRouter _buildRouter(AuthController authController) {
           return StudentProfilePage(
             currentUserId: user.id,
             currentUserEmail: user.email,
+            onLogout: () {
+              authController.signOut();
+            },
             repository: authController.useStaticLogin
                 ? MockProfileRepository()
                 : SupabaseStudentProfileRepository(

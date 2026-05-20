@@ -7,11 +7,17 @@ class ServiceCard extends StatelessWidget {
   const ServiceCard({
     super.key,
     required this.service,
+    required this.isOwner,
     required this.onRequest,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   final ProfileService service;
+  final bool isOwner;
   final VoidCallback onRequest;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -39,13 +45,43 @@ class ServiceCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 11),
-          Text(
-            service.title,
-            style: const TextStyle(
-              color: SkillHubProfileColors.textMain,
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  service.title,
+                  style: const TextStyle(
+                    color: SkillHubProfileColors.textMain,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              if (isOwner)
+                PopupMenuButton<_ServiceAction>(
+                  tooltip: 'Service options',
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: _ServiceAction.edit,
+                      child: Text('Edit service'),
+                    ),
+                    PopupMenuItem(
+                      value: _ServiceAction.delete,
+                      child: Text('Delete service'),
+                    ),
+                  ],
+                  onSelected: (action) {
+                    switch (action) {
+                      case _ServiceAction.edit:
+                        onEdit();
+                      case _ServiceAction.delete:
+                        onDelete();
+                    }
+                  },
+                  child: const Icon(Icons.more_horiz, size: 20),
+                ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(
@@ -75,26 +111,36 @@ class ServiceCard extends StatelessWidget {
             value: open ? 'Open' : 'Closed',
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: open ? onRequest : null,
-              style: FilledButton.styleFrom(
-                backgroundColor: SkillHubProfileColors.navy,
-                foregroundColor: SkillHubProfileColors.white,
-                disabledBackgroundColor: const Color(0xFFF1F5F9),
-                disabledForegroundColor: SkillHubProfileColors.textSub,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          if (isOwner)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined, size: 15),
+                label: const Text('Owner tools'),
+              ),
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: open ? onRequest : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: SkillHubProfileColors.navy,
+                  foregroundColor: SkillHubProfileColors.white,
+                  disabledBackgroundColor: const Color(0xFFF1F5F9),
+                  disabledForegroundColor: SkillHubProfileColors.textSub,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
+                icon: Icon(
+                  open ? Icons.send_outlined : Icons.lock_outline,
+                  size: 15,
+                ),
+                label: Text(open ? 'Request Commission' : 'Currently Closed'),
               ),
-              icon: Icon(
-                open ? Icons.send_outlined : Icons.lock_outline,
-                size: 15,
-              ),
-              label: Text(open ? 'Request Commission' : 'Currently Closed'),
             ),
-          ),
         ],
       ),
     );
@@ -114,6 +160,8 @@ class ServiceCard extends StatelessWidget {
     return Icons.palette_outlined;
   }
 }
+
+enum _ServiceAction { edit, delete }
 
 class _CategoryChip extends StatelessWidget {
   const _CategoryChip({required this.label});

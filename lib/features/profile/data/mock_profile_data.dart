@@ -48,10 +48,166 @@ class MockProfileRepository implements StudentProfileRepository {
       attachment: null,
       likesCount: 0,
       commentsCount: 0,
+      savedCount: 0,
+      isPinned: false,
       createdAt: DateTime.now(),
     );
     _bundle = _bundle.copyWith(posts: [post, ..._bundle.posts]);
     return post;
+  }
+
+  @override
+  Future<ProfilePost> updatePost(ProfilePost post) async {
+    _bundle = _bundle.copyWith(
+      posts: _bundle.posts
+          .map((existing) => existing.id == post.id ? post : existing)
+          .toList(growable: false),
+    );
+    return post;
+  }
+
+  @override
+  Future<void> deletePost(ProfilePost post) async {
+    _bundle = _bundle.copyWith(
+      posts: _bundle.posts
+          .where((existing) => existing.id != post.id)
+          .toList(growable: false),
+    );
+  }
+
+  @override
+  Future<ProfilePost> updatePostVisibility({
+    required ProfilePost post,
+    required VisibilityType visibility,
+  }) {
+    return updatePost(post.copyWith(visibility: visibility));
+  }
+
+  @override
+  Future<ProfilePost> pinPost({
+    required ProfilePost post,
+    required bool pinned,
+  }) {
+    return updatePost(post.copyWith(isPinned: pinned));
+  }
+
+  @override
+  Future<void> savePost({
+    required String postId,
+    required String userId,
+  }) async {}
+
+  @override
+  Future<void> unsavePost({
+    required String postId,
+    required String userId,
+  }) async {}
+
+  @override
+  Future<void> reportPost({
+    required String postId,
+    required String reporterId,
+  }) async {}
+
+  @override
+  Future<ProfileService> createService(ProfileService service) async {
+    final created = service.id.isEmpty
+        ? service.copyWith(
+            id: 'local-service-${DateTime.now().microsecondsSinceEpoch}',
+          )
+        : service;
+    _bundle = _bundle.copyWith(services: [created, ..._bundle.services]);
+    return created;
+  }
+
+  @override
+  Future<ProfileService> updateService(ProfileService service) async {
+    _bundle = _bundle.copyWith(
+      services: _bundle.services
+          .map((existing) => existing.id == service.id ? service : existing)
+          .toList(growable: false),
+    );
+    return service;
+  }
+
+  @override
+  Future<void> deleteService(ProfileService service) async {
+    _bundle = _bundle.copyWith(
+      services: _bundle.services
+          .where((existing) => existing.id != service.id)
+          .toList(growable: false),
+    );
+  }
+
+  @override
+  Future<StudentProfile> updateCv({
+    required StudentProfile profile,
+    required String cvUrl,
+  }) {
+    return updateProfile(profile.copyWith(cvUrl: cvUrl));
+  }
+
+  @override
+  Future<PortfolioItem> createPortfolioItem(PortfolioItem item) async {
+    final created = item.id.isEmpty
+        ? item.copyWith(
+            id: 'local-portfolio-${DateTime.now().microsecondsSinceEpoch}',
+          )
+        : item;
+    _bundle = _bundle.copyWith(
+      portfolioItems: [created, ..._bundle.portfolioItems],
+    );
+    return created;
+  }
+
+  @override
+  Future<PortfolioItem> updatePortfolioItem(PortfolioItem item) async {
+    _bundle = _bundle.copyWith(
+      portfolioItems: _bundle.portfolioItems
+          .map((existing) => existing.id == item.id ? item : existing)
+          .toList(growable: false),
+    );
+    return item;
+  }
+
+  @override
+  Future<void> deletePortfolioItem(PortfolioItem item) async {
+    _bundle = _bundle.copyWith(
+      portfolioItems: _bundle.portfolioItems
+          .where((existing) => existing.id != item.id)
+          .toList(growable: false),
+    );
+  }
+
+  @override
+  Future<ProfileReview> createReview({
+    required ProfileReview review,
+    required String profileOwnerId,
+    required bool completedCommission,
+  }) async {
+    if (review.reviewerId == profileOwnerId) {
+      throw const ProfileActionBlocked('You cannot review your own profile.');
+    }
+    if (!completedCommission) {
+      throw const ProfileActionBlocked(
+        'Reviews require a completed commission.',
+      );
+    }
+    _bundle = _bundle.copyWith(reviews: [review, ..._bundle.reviews]);
+    return review;
+  }
+
+  @override
+  Future<void> requestCommission({
+    required ProfileService service,
+    required String requesterId,
+    required String profileOwnerId,
+  }) async {
+    if (requesterId == profileOwnerId) {
+      throw const ProfileActionBlocked(
+        'You cannot request a commission from yourself.',
+      );
+    }
   }
 }
 
@@ -109,6 +265,8 @@ final mockProfilePosts = [
     ),
     likesCount: 34,
     commentsCount: 12,
+    savedCount: 8,
+    isPinned: false,
     createdAt: DateTime(2026, 5, 18),
   ),
   ProfilePost(
@@ -125,6 +283,8 @@ final mockProfilePosts = [
     ),
     likesCount: 58,
     commentsCount: 17,
+    savedCount: 14,
+    isPinned: false,
     createdAt: DateTime(2026, 5, 10),
   ),
   ProfilePost(
@@ -141,6 +301,8 @@ final mockProfilePosts = [
     ),
     likesCount: 91,
     commentsCount: 22,
+    savedCount: 21,
+    isPinned: false,
     createdAt: DateTime(2026, 4, 28),
   ),
 ];
