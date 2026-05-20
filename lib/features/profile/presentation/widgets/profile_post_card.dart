@@ -14,6 +14,7 @@ class ProfilePostCard extends StatelessWidget {
     required this.onToggleSave,
     required this.onComment,
     required this.onShare,
+    required this.onDelete,
   });
 
   final ProfilePost post;
@@ -24,6 +25,7 @@ class ProfilePostCard extends StatelessWidget {
   final VoidCallback onToggleSave;
   final VoidCallback onComment;
   final VoidCallback onShare;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +88,7 @@ class ProfilePostCard extends StatelessWidget {
               ),
               IconButton(
                 tooltip: 'More',
-                onPressed: () {},
+                onPressed: () => _showPostMenu(context),
                 icon: const Icon(Icons.more_horiz, color: Color(0xFF94A3B8)),
               ),
             ],
@@ -148,6 +150,48 @@ class ProfilePostCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  void _showPostMenu(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.share_outlined),
+                title: const Text('Share post'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  onShare();
+                },
+              ),
+              ListTile(
+                leading: Icon(saved ? Icons.bookmark : Icons.bookmark_border),
+                title: Text(saved ? 'Remove saved post' : 'Save post'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  onToggleSave();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Delete post'),
+                textColor: Colors.red,
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  onDelete();
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

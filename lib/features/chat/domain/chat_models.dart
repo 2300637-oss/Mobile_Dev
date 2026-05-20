@@ -57,7 +57,7 @@ class ChatMessage {
 
   factory ChatMessage.fromSupabaseMap(Map<String, dynamic> data) {
     return ChatMessage(
-      id: data['id'] as String? ?? '',
+      id: data['id']?.toString() ?? '',
       conversationId: data['conversation_id'] as String? ?? '',
       senderId: data['sender_id'] as String? ?? '',
       body: data['body'] as String? ?? '',

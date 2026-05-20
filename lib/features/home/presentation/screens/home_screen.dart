@@ -9,9 +9,26 @@ import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../posts/data/public_post_repository.dart';
 import '../../../posts/data/supabase_public_post_repository.dart';
 import '../../../posts/domain/public_post.dart';
+import '../../../profile/data/follow_store.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  String _selectedFeed = 'For You';
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final userId = context.read<AuthController>().currentUser?.id;
+    if (userId != null && userId.isNotEmpty) {
+      FollowStore.loadForUser(userId);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +49,12 @@ class HomeScreen extends StatelessWidget {
                 onLogout: authController.isBusy ? null : authController.signOut,
               ),
             ),
-            const SliverToBoxAdapter(child: _FeedTabs()),
+            SliverToBoxAdapter(
+              child: _FeedTabs(
+                selected: _selectedFeed,
+                onChanged: (label) => setState(() => _selectedFeed = label),
+              ),
+            ),
             StreamBuilder<List<PublicPost>>(
               stream: repository.watchPosts(),
               builder: (context, snapshot) {
@@ -42,11 +64,14 @@ class HomeScreen extends StatelessWidget {
                   );
                 }
 
-                final posts = snapshot.data ?? const <PublicPost>[];
+                final posts = _filterPosts(
+                  snapshot.data ?? const <PublicPost>[],
+                  user?.id,
+                );
                 if (posts.isEmpty) {
-                  return const SliverFillRemaining(
+                  return SliverFillRemaining(
                     hasScrollBody: false,
-                    child: _EmptyFeed(),
+                    child: _EmptyFeed(label: _selectedFeed),
                   );
                 }
 
@@ -77,6 +102,36 @@ class HomeScreen extends StatelessWidget {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
+
+  List<PublicPost> _filterPosts(List<PublicPost> posts, String? currentUserId) {
+    final selected = _selectedFeed.toLowerCase();
+    if (selected == 'following') {
+      final followingIds = currentUserId == null
+          ? const <String>{}
+          : FollowStore.followingIds(currentUserId);
+      return posts
+          .where((post) => followingIds.contains(post.authorId))
+          .toList(growable: false);
+    }
+    if (selected == 'art showcase') {
+      return posts
+          .where((post) => post.type.toLowerCase().contains('art'))
+          .toList(growable: false);
+    }
+    if (selected == 'open comms') {
+      return posts
+          .where((post) {
+            final type = post.type.toLowerCase();
+            final caption = post.caption.toLowerCase();
+            return type.contains('commission') ||
+                type.contains('service') ||
+                caption.contains('open commission') ||
+                caption.contains('open comms');
+          })
+          .toList(growable: false);
+    }
+    return posts;
+  }
 }
 
 class _FeedHeader extends StatelessWidget {
@@ -101,20 +156,14 @@ class _FeedHeader extends StatelessWidget {
               const _MiniLnuMark(),
               const SizedBox(width: 10),
               const Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(text: 'LNU '),
-                      TextSpan(
-                        text: 'SKILLHUB',
-                        style: TextStyle(color: AppColors.schoolBusYellow),
-                      ),
-                    ],
-                  ),
+                child: Text(
+                  'LNU Student Skills Commision',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: AppColors.white,
                     fontWeight: FontWeight.w900,
-                    fontSize: 20,
+                    fontSize: 18,
                   ),
                 ),
               ),
@@ -143,9 +192,24 @@ class _FeedHeader extends StatelessWidget {
   }
 }
 
-class _FeedTabs extends StatelessWidget {
-  const _FeedTabs();
+class _FeedTabs extends StatefulWidget {
+  const _FeedTabs({required this.selected, required this.onChanged});
 
+  final String selected;
+  final ValueChanged<String> onChanged;
+
+  static const List<String> _labels = [
+    'For You',
+    'Following',
+    'Art Showcase',
+    'Open Comms',
+  ];
+
+  @override
+  State<_FeedTabs> createState() => _FeedTabsState();
+}
+
+class _FeedTabsState extends State<_FeedTabs> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -153,11 +217,13 @@ class _FeedTabs extends StatelessWidget {
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        children: const [
-          _FeedChip(label: 'For You', selected: true),
-          _FeedChip(label: 'Following'),
-          _FeedChip(label: 'Art Showcase'),
-          _FeedChip(label: 'Open Comms'),
+        children: [
+          for (final label in _FeedTabs._labels)
+            _FeedChip(
+              label: label,
+              selected: label == widget.selected,
+              onPressed: () => widget.onChanged(label),
+            ),
         ],
       ),
     );
@@ -165,16 +231,22 @@ class _FeedTabs extends StatelessWidget {
 }
 
 class _FeedChip extends StatelessWidget {
-  const _FeedChip({required this.label, this.selected = false});
+  const _FeedChip({
+    required this.label,
+    required this.onPressed,
+    this.selected = false,
+  });
 
   final String label;
+  final VoidCallback onPressed;
   final bool selected;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: Chip(
+      child: ActionChip(
+        onPressed: onPressed,
         label: Text(label),
         backgroundColor: selected
             ? AppColors.schoolBusYellow
@@ -359,7 +431,7 @@ class _PostAuthor extends StatelessWidget {
             ),
             IconButton(
               tooltip: 'More',
-              onPressed: () {},
+              onPressed: onPressed,
               icon: const Icon(Icons.more_horiz, size: 20),
             ),
           ],
@@ -681,7 +753,7 @@ class _PostStatsState extends State<_PostStats> {
       await SharePlus.instance.share(
         ShareParams(
           text:
-              '${widget.post.authorName} on LNU Skills Commission: ${widget.post.caption}',
+              '${widget.post.authorName} on LNU Student Skills Commission: ${widget.post.caption}',
         ),
       );
     } catch (_) {
@@ -871,7 +943,9 @@ class _PostViewersSheet extends StatelessWidget {
 }
 
 class _EmptyFeed extends StatelessWidget {
-  const _EmptyFeed();
+  const _EmptyFeed({required this.label});
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -887,8 +961,10 @@ class _EmptyFeed extends StatelessWidget {
               color: Theme.of(context).colorScheme.primary,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'No public posts yet',
+            Text(
+              label == 'For You'
+                  ? 'No public posts yet'
+                  : 'No $label posts yet',
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
             ),
             const SizedBox(height: 6),
@@ -952,12 +1028,12 @@ class _SkillHubBottomBar extends StatelessWidget {
               icon: Icons.home,
               label: 'Home',
               active: true,
-              onPressed: () {},
+              onPressed: () => context.go('/home'),
             ),
             _BottomItem(
               icon: Icons.search,
               label: 'Search',
-              onPressed: () => context.go('/services'),
+              onPressed: () => context.go('/search'),
             ),
             const SizedBox(width: 48),
             _BottomItem(

@@ -133,13 +133,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
             TextFormField(
               controller: _studentIdController,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(7),
+              ],
               decoration: const InputDecoration(
                 labelText: 'Student ID',
                 prefixIcon: Icon(Icons.school_outlined),
+                helperText: 'Enter your 7-digit student ID.',
               ),
-              validator: (value) =>
-                  AuthValidators.requiredText(value, 'Student ID'),
+              validator: (value) {
+                final requiredError = AuthValidators.requiredText(
+                  value,
+                  'Student ID',
+                );
+                if (requiredError != null) {
+                  return requiredError;
+                }
+                if (!RegExp(r'^\d{7}$').hasMatch(value!.trim())) {
+                  return 'Student ID must be exactly 7 digits.';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(

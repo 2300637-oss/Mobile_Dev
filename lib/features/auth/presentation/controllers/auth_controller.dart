@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthUser;
 
@@ -11,7 +10,7 @@ import '../../../profile/domain/user_profile.dart';
 class AuthController extends ChangeNotifier {
   AuthController(
     this._authRepository, {
-    this.useStaticLogin = true,
+    this.useStaticLogin = false,
     this.requireEmailVerification = false,
   });
 
@@ -69,12 +68,24 @@ class AuthController extends ChangeNotifier {
       return true;
     }
 
-    return _runAuthAction(
-      () => _authRepository.signInWithEmailAndPassword(
+    isBusy = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      currentUser = await _authRepository.signInWithEmailAndPassword(
         email: email,
         password: password,
-      ),
-    );
+      );
+      return true;
+    } catch (error) {
+      currentUser = null;
+      errorMessage = _messageForError(error);
+      return false;
+    } finally {
+      isBusy = false;
+      notifyListeners();
+    }
   }
 
   Future<bool> register({
@@ -259,39 +270,12 @@ class AuthController extends ChangeNotifier {
           message.toLowerCase().contains('row-level security')) {
         return 'Supabase blocked this request with RLS. Check the policies from supabase_schema.sql.';
       }
+      if (message.toLowerCase().contains('foreign key constraint')) {
+        return 'Your login worked, but Supabase profile sync needs its users/profiles table setup checked.';
+      }
       return message.isEmpty
           ? 'Supabase database request failed. Please try again.'
           : message;
-    }
-
-    if (error is FirebaseAuthException) {
-      final message = error.message ?? '';
-      if (message.contains('CONFIGURATION_NOT_FOUND')) {
-        return 'Firebase Authentication is not enabled yet. In Firebase Console, open Authentication, click Get started, and enable Email/Password sign-in.';
-      }
-
-      return switch (error.code) {
-        'email-already-in-use' => 'That email is already registered.',
-        'invalid-email' => 'Enter a valid email address.',
-        'invalid-credential' => 'The email or password is incorrect.',
-        'operation-not-allowed' =>
-          'Email/password sign-in is disabled in Firebase Console.',
-        'user-disabled' => 'This account has been disabled.',
-        'user-not-found' => 'No account was found for that email.',
-        'weak-password' => 'Use a stronger password.',
-        'wrong-password' => 'The email or password is incorrect.',
-        _ =>
-          message.isEmpty
-              ? 'Authentication failed. Please try again.'
-              : message,
-      };
-    }
-
-    if (error is FirebaseException) {
-      if (error.code == 'permission-denied') {
-        return 'Firebase blocked this request. Check your Firestore security rules for users and profiles.';
-      }
-      return error.message ?? 'Firebase failed. Please try again.';
     }
 
     if (error is AuthFailure) {

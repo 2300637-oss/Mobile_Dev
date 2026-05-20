@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthUser;
@@ -25,15 +26,11 @@ class SupabaseChatRepository implements ChatDataSource {
   Stream<List<ChatMessage>> watchMessages({
     required String conversationId,
     required String currentUserId,
-  }) {
-    return _client
-        .from('messages')
-        .stream(primaryKey: ['id'])
-        .eq('conversation_id', conversationId)
-        .order('created_at')
-        .map((rows) {
-          return rows.map(ChatMessage.fromSupabaseMap).toList(growable: false);
-        });
+  }) async* {
+    yield await _fetchMessages(conversationId);
+    yield* Stream.periodic(
+      const Duration(seconds: 2),
+    ).asyncMap((_) => _fetchMessages(conversationId));
   }
 
   @override
@@ -75,6 +72,38 @@ class SupabaseChatRepository implements ChatDataSource {
   }
 
   @override
+  Future<ChatContact?> fetchConversationPeer({
+    required String conversationId,
+    required String currentUserId,
+  }) async {
+    final participantRows = await _client
+        .from('conversation_participants')
+        .select('user_id')
+        .eq('conversation_id', conversationId);
+    final peerId = participantRows
+        .map((row) => row['user_id'] as String? ?? '')
+        .firstWhere(
+          (userId) => userId.isNotEmpty && userId != currentUserId,
+          orElse: () => '',
+        );
+    if (peerId.isEmpty) {
+      return null;
+    }
+
+    final profile = await _client
+        .from('profiles')
+        .select(
+          'uid, full_name, username, college, department, year_level, profile_picture_url',
+        )
+        .eq('uid', peerId)
+        .maybeSingle();
+    return _contactFromProfile(
+      profile ?? const <String, dynamic>{},
+      fallbackId: peerId,
+    );
+  }
+
+  @override
   Future<String> startConversation({
     required AuthUser currentUser,
     required ChatContact peer,
@@ -84,12 +113,12 @@ class SupabaseChatRepository implements ChatDataSource {
       return existing;
     }
 
-    final conversation = await _client
-        .from('conversations')
-        .insert({'last_message_text': '', 'last_message_at': null})
-        .select('id')
-        .single();
-    final conversationId = conversation['id'] as String;
+    final conversationId = _uuidV4();
+    await _client.from('conversations').insert({
+      'id': conversationId,
+      'last_message_text': '',
+      'last_message_at': null,
+    });
 
     await _client.from('conversation_participants').insert([
       {
@@ -318,6 +347,17 @@ class SupabaseChatRepository implements ChatDataSource {
     return summaries;
   }
 
+  Future<List<ChatMessage>> _fetchMessages(String conversationId) async {
+    final rows = await _client
+        .from('messages')
+        .select(
+          'id, conversation_id, sender_id, body, attachment_url, attachment_name, attachment_type, seen_at, created_at',
+        )
+        .eq('conversation_id', conversationId)
+        .order('created_at');
+    return rows.map(ChatMessage.fromSupabaseMap).toList(growable: false);
+  }
+
   Future<String?> _findExistingConversation(
     String currentUserId,
     String peerId,
@@ -353,10 +393,10 @@ class SupabaseChatRepository implements ChatDataSource {
     final yearLevel = profile['year_level'] as String? ?? '';
     return ChatContact(
       id: profile['uid'] as String? ?? fallbackId,
-      name: username.isNotEmpty
-          ? username
-          : fullName.isNotEmpty
+      name: fullName.isNotEmpty
           ? fullName
+          : username.isNotEmpty
+          ? username
           : 'LNU student',
       detail: [
         college,
@@ -366,6 +406,18 @@ class SupabaseChatRepository implements ChatDataSource {
       avatarUrl: profile['profile_picture_url'] as String? ?? '',
     );
   }
+}
+
+String _uuidV4() {
+  final random = Random.secure();
+  final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  String hex(int value) => value.toRadixString(16).padLeft(2, '0');
+  final text = bytes.map(hex).join();
+  return '${text.substring(0, 8)}-${text.substring(8, 12)}-'
+      '${text.substring(12, 16)}-${text.substring(16, 20)}-'
+      '${text.substring(20)}';
 }
 
 DateTime? _dateFromValue(Object? value) {

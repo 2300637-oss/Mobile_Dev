@@ -319,6 +319,8 @@ class StudentProfile {
       'avatar_url': avatarUrl,
       'cover_url': coverUrl,
       'cv_url': cvUrl,
+      'profile_picture_url': avatarUrl,
+      'portfolio_links': portfolioLinks,
       'verified': verified,
       'updated_at': DateTime.now().toIso8601String(),
     };

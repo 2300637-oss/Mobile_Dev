@@ -29,13 +29,12 @@ void main() {
     await tester.pumpWidget(_profileHarness());
     await tester.pumpAndSettle();
 
-    expect(find.text('LNU SKILLHUB'), findsOneWidget);
+    expect(find.text('Profile'), findsOneWidget);
     expect(find.text('Ana Reyes'), findsWidgets);
-    expect(find.text('Verified LNU Student'), findsWidgets);
     expect(find.text('Open for Commissions'), findsWidgets);
     expect(find.text('Posts'), findsWidgets);
-    expect(find.text('Completed'), findsOneWidget);
-    expect(find.text('Average Rating'), findsOneWidget);
+    expect(find.text('Followers'), findsOneWidget);
+    expect(find.text('Following'), findsOneWidget);
     expect(
       find.text('What skill update do you want to share?'),
       findsOneWidget,
@@ -50,7 +49,8 @@ void main() {
     await _tapVisible(tester, find.byKey(const Key('profile-tab-portfolio')));
     await tester.pumpAndSettle();
     expect(find.text('Curriculum Vitae'), findsOneWidget);
-    expect(find.text('View CV'), findsOneWidget);
+    expect(find.text('No CV uploaded yet'), findsOneWidget);
+    expect(find.text('Upload'), findsOneWidget);
     expect(find.text('Featured Work'), findsOneWidget);
 
     await _tapVisible(tester, find.byKey(const Key('profile-tab-reviews')));

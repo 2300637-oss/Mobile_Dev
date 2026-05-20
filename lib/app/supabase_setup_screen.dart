@@ -8,7 +8,7 @@ class SupabaseSetupScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'LNU Skills Commission',
+      title: 'LNU Student Skills Commission',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.navy),

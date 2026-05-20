@@ -9,11 +9,13 @@ class ReviewsSection extends StatelessWidget {
     required this.profile,
     required this.reviews,
     required this.ratingDistribution,
+    this.onAddReview,
   });
 
   final StudentProfile profile;
   final List<ProfileReview> reviews;
   final List<RatingDistribution> ratingDistribution;
+  final VoidCallback? onAddReview;
 
   @override
   Widget build(BuildContext context) {
@@ -27,14 +29,53 @@ class ReviewsSection extends StatelessWidget {
             profile: profile,
             ratingDistribution: ratingDistribution,
           ),
+          if (onAddReview != null) ...[
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: onAddReview,
+              style: FilledButton.styleFrom(
+                backgroundColor: SkillHubProfileColors.navy,
+                foregroundColor: SkillHubProfileColors.white,
+              ),
+              icon: const Icon(Icons.rate_review_outlined, size: 17),
+              label: const Text('Write a Review'),
+            ),
+          ],
           const SizedBox(height: 12),
           const _ReviewRuleNotice(),
           const SizedBox(height: 12),
-          for (final review in reviews) ...[
-            ReviewCard(review: review),
-            if (review != reviews.last) const SizedBox(height: 10),
-          ],
+          if (reviews.isEmpty)
+            const _EmptyReviews()
+          else
+            for (final review in reviews) ...[
+              ReviewCard(review: review),
+              if (review != reviews.last) const SizedBox(height: 10),
+            ],
         ],
+      ),
+    );
+  }
+}
+
+class _EmptyReviews extends StatelessWidget {
+  const _EmptyReviews();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAFBFD),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      child: const Text(
+        'No reviews yet.',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: SkillHubProfileColors.textSub,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

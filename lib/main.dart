@@ -21,5 +21,10 @@ Future<void> main() async {
 
   final client = Supabase.instance.client;
 
-  runApp(CommissionApp(authRepository: SupabaseAuthRepository(client: client)));
+  runApp(
+    CommissionApp(
+      authRepository: SupabaseAuthRepository(client: client),
+      requireEmailVerification: true,
+    ),
+  );
 }

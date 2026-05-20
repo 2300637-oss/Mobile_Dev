@@ -53,6 +53,116 @@ class MockProfileRepository implements StudentProfileRepository {
     _bundle = _bundle.copyWith(posts: [post, ..._bundle.posts]);
     return post;
   }
+
+  @override
+  Future<PortfolioItem> createPortfolioItem({
+    required String profileId,
+    required String title,
+    required String description,
+  }) async {
+    final item = PortfolioItem(
+      id: 'local-portfolio-${DateTime.now().microsecondsSinceEpoch}',
+      profileId: profileId,
+      title: title,
+      description: description,
+      fileUrl: '',
+      externalUrl: '',
+      itemType: 'project',
+      createdAt: DateTime.now(),
+    );
+    _bundle = _bundle.copyWith(
+      portfolioItems: [item, ..._bundle.portfolioItems],
+    );
+    return item;
+  }
+
+  @override
+  Future<ProfileService> createService({
+    required String profileId,
+    required String title,
+    required String description,
+    required String category,
+    required String priceRange,
+    required String deliveryTime,
+    required AvailabilityStatus availability,
+  }) async {
+    final service = ProfileService(
+      id: 'local-service-${DateTime.now().microsecondsSinceEpoch}',
+      profileId: profileId,
+      title: title,
+      description: description,
+      category: category,
+      priceRange: priceRange,
+      deliveryTime: deliveryTime,
+      availability: availability,
+      createdAt: DateTime.now(),
+    );
+    _bundle = _bundle.copyWith(services: [service, ..._bundle.services]);
+    return service;
+  }
+
+  @override
+  Future<ProfileReview> createReview({
+    required String profileId,
+    required String reviewerId,
+    required String reviewerName,
+    required String serviceTitle,
+    required int rating,
+    required String comment,
+  }) async {
+    final review = ProfileReview(
+      id: 'local-review-${DateTime.now().microsecondsSinceEpoch}',
+      profileId: profileId,
+      reviewerId: reviewerId,
+      reviewerName: reviewerName,
+      reviewerInitials: _initialsForName(reviewerName),
+      serviceTitle: serviceTitle,
+      rating: rating.clamp(1, 5),
+      comment: comment,
+      createdAt: DateTime.now(),
+    );
+    _bundle = _bundle.copyWith(reviews: [review, ..._bundle.reviews]);
+    return review;
+  }
+
+  @override
+  Future<void> deletePost({
+    required String profileId,
+    required String postId,
+  }) async {
+    _bundle = _bundle.copyWith(
+      posts: _bundle.posts.where((post) => post.id != postId).toList(),
+      profile: _bundle.profile.copyWith(
+        stats: _bundle.profile.stats.copyWith(
+          posts: (_bundle.profile.stats.posts - 1).clamp(0, 1 << 31),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Future<String> uploadProfileFile({
+    required String userId,
+    required String path,
+    required String fileName,
+    required String bucket,
+    String? contentType,
+  }) async {
+    return path;
+  }
+
+  String _initialsForName(String name) {
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .toList();
+    if (parts.isEmpty) {
+      return 'LS';
+    }
+    return parts.map((part) => part.substring(0, 1).toUpperCase()).join();
+  }
 }
 
 final mockStudentProfileBundle = StudentProfileBundle(
@@ -85,12 +195,12 @@ final mockStudentProfile = StudentProfile(
   visibility: VisibilityType.lnuPublic,
   avatarUrl: '',
   coverUrl: '',
-  cvUrl: 'Ana_Reyes_CV.pdf',
+  cvUrl: '',
   verified: true,
   email: 'ana.reyes@lnu.edu.ph',
   contactPreference: 'Message on SkillHub',
   joinedLabel: 'August 2023',
-  portfolioLinks: const ['behance.net/ana-draws', 'instagram.com/ana.draws'],
+  portfolioLinks: const ['behance.net/ana-draws'],
   stats: const ProfileStats(posts: 12, completed: 47, reviews: 23, rating: 4.8),
 );
 

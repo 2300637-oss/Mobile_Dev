@@ -26,17 +26,26 @@ class ChatThreadController extends ChangeNotifier {
 
   List<ChatMessage> messages = const [];
   List<String> typingUserIds = const [];
+  ChatContact? peer;
   bool isLoading = true;
   bool isSending = false;
   bool isUploading = false;
   String? errorMessage;
 
   void start() {
+    _loadPeer();
     _messagesSubscription = _repository
         .watchMessages(conversationId: conversationId, currentUserId: _user.id)
         .listen(
           (items) {
-            messages = items;
+            messages = [...items]
+              ..sort((a, b) {
+                final left =
+                    a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+                final right =
+                    b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+                return left.compareTo(right);
+              });
             isLoading = false;
             errorMessage = null;
             notifyListeners();
@@ -57,6 +66,18 @@ class ChatThreadController extends ChangeNotifier {
           typingUserIds = userIds;
           notifyListeners();
         });
+  }
+
+  Future<void> _loadPeer() async {
+    try {
+      peer = await _repository.fetchConversationPeer(
+        conversationId: conversationId,
+        currentUserId: _user.id,
+      );
+      notifyListeners();
+    } catch (_) {
+      peer = null;
+    }
   }
 
   Future<void> sendText(String value) async {

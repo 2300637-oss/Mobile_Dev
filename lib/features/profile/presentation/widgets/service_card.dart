@@ -41,6 +41,8 @@ class ServiceCard extends StatelessWidget {
           const SizedBox(height: 11),
           Text(
             service.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: SkillHubProfileColors.textMain,
               fontSize: 14,
@@ -50,6 +52,8 @@ class ServiceCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             service.description,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: SkillHubProfileColors.textSub,
               fontSize: 12.5,
@@ -92,7 +96,10 @@ class ServiceCard extends StatelessWidget {
                 open ? Icons.send_outlined : Icons.lock_outline,
                 size: 15,
               ),
-              label: Text(open ? 'Request Commission' : 'Currently Closed'),
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(open ? 'Request Commission' : 'Currently Closed'),
+              ),
             ),
           ),
         ],
@@ -122,32 +129,43 @@ class _CategoryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFFDE68A)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.local_offer_outlined,
-            size: 12,
-            color: Color(0xFFB45309),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFFB45309),
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFFDE68A)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.local_offer_outlined,
+                  size: 12,
+                  color: Color(0xFFB45309),
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFFB45309),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

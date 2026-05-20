@@ -38,7 +38,7 @@ class AuthShell extends StatelessWidget {
                     const _LnuBadge(),
                     const SizedBox(height: 24),
                     const Text(
-                      'LNU Skills Commission',
+                      'LNU Student Skills Commission',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppColors.white,
