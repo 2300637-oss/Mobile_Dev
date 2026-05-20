@@ -170,23 +170,27 @@ class _ChatHeader extends StatelessWidget {
               ],
             ),
           ),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              const Icon(Icons.notifications, color: AppColors.white),
-              Positioned(
-                right: -1,
-                top: -2,
-                child: Container(
-                  width: 9,
-                  height: 9,
-                  decoration: const BoxDecoration(
-                    color: AppColors.cinnabar,
-                    shape: BoxShape.circle,
+          IconButton(
+            tooltip: 'Notifications',
+            onPressed: () => context.go('/notifications'),
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications, color: AppColors.white),
+                Positioned(
+                  right: -1,
+                  top: -2,
+                  child: Container(
+                    width: 9,
+                    height: 9,
+                    decoration: const BoxDecoration(
+                      color: AppColors.cinnabar,
+                      shape: BoxShape.circle,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

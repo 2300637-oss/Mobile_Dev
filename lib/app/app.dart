@@ -21,6 +21,7 @@ import '../features/chat/presentation/controllers/chat_thread_controller.dart';
 import '../features/chat/presentation/screens/chat_screen.dart';
 import '../features/chat/presentation/screens/chat_thread_screen.dart';
 import '../features/home/presentation/screens/home_screen.dart';
+import '../features/notifications/presentation/screens/notifications_screen.dart';
 import '../features/posts/data/supabase_public_post_repository.dart';
 import '../features/posts/presentation/controllers/create_post_controller.dart';
 import '../features/posts/presentation/screens/create_post_screen.dart';
@@ -37,7 +38,7 @@ class CommissionApp extends StatefulWidget {
   const CommissionApp({
     super.key,
     required this.authRepository,
-    this.useStaticLogin = true,
+    this.useStaticLogin = false,
     this.requireEmailVerification = false,
   });
 
@@ -321,11 +322,17 @@ GoRouter _buildRouter(AuthController authController) {
       ),
       GoRoute(
         path: '/notifications',
-        builder: (context, state) => const ModulePlaceholderScreen(
-          title: 'Notifications',
-          icon: Icons.notifications_outlined,
-          message: 'Message alerts, reactions, shares, and commission updates.',
-        ),
+        builder: (context, state) {
+          final user = authController.currentUser;
+          if (user == null) {
+            return const SplashScreen();
+          }
+
+          return NotificationsScreen(
+            client: Supabase.instance.client,
+            currentUser: user,
+          );
+        },
       ),
       GoRoute(
         path: '/commission-requests',

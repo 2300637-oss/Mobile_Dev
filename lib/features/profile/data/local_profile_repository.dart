@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:image_picker/image_picker.dart';
+
 import '../domain/user_profile.dart';
 import '../presentation/controllers/profile_controller.dart';
 
@@ -24,6 +26,14 @@ class LocalProfileRepository implements ProfileDataSource {
   Future<void> updateProfile(UserProfile profile) async {
     _profiles[profile.uid] = profile;
     _controllerFor(profile.uid).add(profile);
+  }
+
+  @override
+  Future<String> uploadProfilePicture({
+    required String uid,
+    required XFile file,
+  }) async {
+    return file.path;
   }
 
   static StreamController<UserProfile> _controllerFor(String uid) {

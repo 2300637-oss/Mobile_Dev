@@ -39,7 +39,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const _ThreadHeader(),
+            _ThreadHeader(peer: controller.peer),
             if (controller.errorMessage != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -98,10 +98,15 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
 }
 
 class _ThreadHeader extends StatelessWidget {
-  const _ThreadHeader();
+  const _ThreadHeader({required this.peer});
+
+  final ChatContact? peer;
 
   @override
   Widget build(BuildContext context) {
+    final title = peer?.name.isNotEmpty == true ? peer!.name : 'Direct Message';
+    final detail = peer?.detail.isNotEmpty == true ? peer!.detail : 'Online';
+
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 10, 12, 10),
       decoration: const BoxDecoration(color: AppColors.midnightBlue),
@@ -113,28 +118,43 @@ class _ThreadHeader extends StatelessWidget {
             icon: const Icon(Icons.arrow_back),
             color: AppColors.white,
           ),
-          const CircleAvatar(
+          CircleAvatar(
             radius: 20,
             backgroundColor: AppColors.schoolBusYellow,
-            child: Icon(Icons.person, color: AppColors.midnightBlue),
+            backgroundImage: peer?.avatarUrl.isNotEmpty == true
+                ? NetworkImage(peer!.avatarUrl)
+                : null,
+            child: peer?.avatarUrl.isNotEmpty == true
+                ? null
+                : Text(
+                    title.characters.first.toUpperCase(),
+                    style: const TextStyle(
+                      color: AppColors.midnightBlue,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
           ),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Direct Message',
-                  style: TextStyle(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
                     color: AppColors.white,
                     fontWeight: FontWeight.w900,
                     fontSize: 16,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
-                  'Online',
-                  style: TextStyle(
+                  detail,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
                     color: AppColors.radioactiveGrass,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,

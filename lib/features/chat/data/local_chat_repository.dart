@@ -85,6 +85,15 @@ class LocalChatRepository implements ChatDataSource {
   }
 
   @override
+  Future<ChatContact?> fetchConversationPeer({
+    required String conversationId,
+    required String currentUserId,
+  }) async {
+    _seed(currentUserId);
+    return _peersByConversation[conversationId];
+  }
+
+  @override
   Future<String> startConversation({
     required AuthUser currentUser,
     required ChatContact peer,

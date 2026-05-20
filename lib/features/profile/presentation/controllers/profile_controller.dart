@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../domain/user_profile.dart';
 
@@ -8,6 +9,11 @@ abstract class ProfileDataSource {
   Stream<UserProfile> watchProfile(String uid);
 
   Future<void> updateProfile(UserProfile profile);
+
+  Future<String> uploadProfilePicture({
+    required String uid,
+    required XFile file,
+  });
 }
 
 class ProfileController extends ChangeNotifier {
@@ -55,6 +61,25 @@ class ProfileController extends ChangeNotifier {
     } catch (error) {
       errorMessage = _messageForError(error);
       return false;
+    } finally {
+      isSaving = false;
+      notifyListeners();
+    }
+  }
+
+  Future<String?> uploadProfilePicture(XFile file) async {
+    isSaving = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      return await _profileRepository.uploadProfilePicture(
+        uid: _uid,
+        file: file,
+      );
+    } catch (error) {
+      errorMessage = _messageForError(error);
+      return null;
     } finally {
       isSaving = false;
       notifyListeners();
