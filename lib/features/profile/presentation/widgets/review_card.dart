@@ -10,12 +10,14 @@ class ReviewsSection extends StatelessWidget {
     required this.reviews,
     required this.ratingDistribution,
     this.onAddReview,
+    required this.isOwner,
   });
 
   final StudentProfile profile;
   final List<ProfileReview> reviews;
   final List<RatingDistribution> ratingDistribution;
   final VoidCallback? onAddReview;
+  final bool isOwner;
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +45,10 @@ class ReviewsSection extends StatelessWidget {
           ],
           const SizedBox(height: 12),
           const _ReviewRuleNotice(),
+          if (isOwner) ...[
+            const SizedBox(height: 8),
+            const _OwnerReviewNotice(),
+          ],
           const SizedBox(height: 12),
           if (reviews.isEmpty)
             const _EmptyReviews()
@@ -57,25 +63,33 @@ class ReviewsSection extends StatelessWidget {
   }
 }
 
-class _EmptyReviews extends StatelessWidget {
-  const _EmptyReviews();
+class _OwnerReviewNotice extends StatelessWidget {
+  const _OwnerReviewNotice();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFBFD),
+        color: const Color(0xFFFFFBEB),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: const Color(0xFFFDE68A)),
       ),
-      child: const Text(
-        'No reviews yet.',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: SkillHubProfileColors.textSub,
-          fontWeight: FontWeight.w700,
-        ),
+      child: const Row(
+        children: [
+          Icon(Icons.info_outline, color: Color(0xFFB45309), size: 16),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'You cannot review your own profile.',
+              style: TextStyle(
+                color: Color(0xFF92400E),
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

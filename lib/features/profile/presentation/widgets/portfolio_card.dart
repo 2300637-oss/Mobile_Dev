@@ -9,20 +9,26 @@ class PortfolioSection extends StatelessWidget {
     super.key,
     required this.profile,
     required this.items,
+    required this.isOwner,
     required this.onViewCv,
     required this.onDownloadCv,
-    required this.onUploadCv,
+    required this.onEditCv,
     required this.onAddLink,
     required this.onAddProject,
+    required this.onEditItem,
+    required this.onDeleteItem,
   });
 
   final StudentProfile profile;
   final List<PortfolioItem> items;
+  final bool isOwner;
   final VoidCallback onViewCv;
   final VoidCallback onDownloadCv;
-  final VoidCallback onUploadCv;
+  final VoidCallback onEditCv;
   final VoidCallback onAddLink;
   final VoidCallback onAddProject;
+  final ValueChanged<PortfolioItem> onEditItem;
+  final ValueChanged<PortfolioItem> onDeleteItem;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +46,8 @@ class PortfolioSection extends StatelessWidget {
                 : profile.cvUrl,
             onView: onViewCv,
             onDownload: onDownloadCv,
-            onUpload: onUploadCv,
+            onEdit: onEditCv,
+            isOwner: isOwner,
           ),
           const SizedBox(height: 16),
           const _SectionHead(title: 'Portfolio Links'),
@@ -49,20 +56,19 @@ class PortfolioSection extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              ...profile.portfolioLinks.toSet().map(
-                (link) => _LinkChip(label: link),
-              ),
-              ActionChip(
-                avatar: const Icon(Icons.add_link, size: 15),
-                label: const Text('Add Link'),
-                onPressed: onAddLink,
-                backgroundColor: const Color(0xFFF0FDF4),
-                labelStyle: const TextStyle(
-                  color: Color(0xFF059669),
-                  fontWeight: FontWeight.w800,
+              ...profile.portfolioLinks.map((link) => _LinkChip(label: link)),
+              if (isOwner)
+                ActionChip(
+                  avatar: const Icon(Icons.add_link, size: 15),
+                  label: const Text('Add Link'),
+                  onPressed: onAddLink,
+                  backgroundColor: const Color(0xFFF0FDF4),
+                  labelStyle: const TextStyle(
+                    color: Color(0xFF059669),
+                    fontWeight: FontWeight.w800,
+                  ),
+                  side: const BorderSide(color: Color(0xFFA7F3D0)),
                 ),
-                side: const BorderSide(color: Color(0xFFA7F3D0)),
-              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -80,14 +86,20 @@ class PortfolioSection extends StatelessWidget {
                       width: twoColumns
                           ? (constraints.maxWidth - 12) / 2
                           : constraints.maxWidth,
-                      child: PortfolioCard(item: item),
+                      child: PortfolioCard(
+                        item: item,
+                        isOwner: isOwner,
+                        onEdit: () => onEditItem(item),
+                        onDelete: () => onDeleteItem(item),
+                      ),
                     ),
-                  SizedBox(
-                    width: twoColumns
-                        ? (constraints.maxWidth - 12) / 2
-                        : constraints.maxWidth,
-                    child: _AddProjectCard(onPressed: onAddProject),
-                  ),
+                  if (isOwner)
+                    SizedBox(
+                      width: twoColumns
+                          ? (constraints.maxWidth - 12) / 2
+                          : constraints.maxWidth,
+                      child: _AddProjectCard(onPressed: onAddProject),
+                    ),
                 ],
               );
             },
@@ -99,9 +111,18 @@ class PortfolioSection extends StatelessWidget {
 }
 
 class PortfolioCard extends StatelessWidget {
-  const PortfolioCard({super.key, required this.item});
+  const PortfolioCard({
+    super.key,
+    required this.item,
+    this.isOwner = false,
+    this.onEdit,
+    this.onDelete,
+  });
 
   final PortfolioItem item;
+  final bool isOwner;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -134,13 +155,41 @@ class PortfolioCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.title,
-                  style: const TextStyle(
-                    color: SkillHubProfileColors.textMain,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12.5,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.title,
+                        style: const TextStyle(
+                          color: SkillHubProfileColors.textMain,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ),
+                    if (isOwner)
+                      PopupMenuButton<_PortfolioAction>(
+                        tooltip: 'Portfolio options',
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(
+                            value: _PortfolioAction.edit,
+                            child: Text('Edit item'),
+                          ),
+                          PopupMenuItem(
+                            value: _PortfolioAction.delete,
+                            child: Text('Delete item'),
+                          ),
+                        ],
+                        onSelected: (action) {
+                          switch (action) {
+                            case _PortfolioAction.edit:
+                              onEdit?.call();
+                            case _PortfolioAction.delete:
+                              onDelete?.call();
+                          }
+                        },
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -193,18 +242,22 @@ class PortfolioCard extends StatelessWidget {
   }
 }
 
+enum _PortfolioAction { edit, delete }
+
 class _CvCard extends StatelessWidget {
   const _CvCard({
     required this.cvName,
     required this.onView,
     required this.onDownload,
-    required this.onUpload,
+    required this.onEdit,
+    required this.isOwner,
   });
 
   final String cvName;
   final VoidCallback onView;
   final VoidCallback onDownload;
-  final VoidCallback onUpload;
+  final VoidCallback onEdit;
+  final bool isOwner;
 
   @override
   Widget build(BuildContext context) {

@@ -11,6 +11,8 @@ import '../../../posts/data/supabase_public_post_repository.dart';
 import '../../../posts/domain/public_post.dart';
 import '../../../profile/data/follow_store.dart';
 
+enum _FeedFilter { forYou, following, artShowcase, openComms }
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -29,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
       FollowStore.loadForUser(userId);
     }
   }
+  _FeedFilter _selectedFilter = _FeedFilter.forYou;
 
   @override
   Widget build(BuildContext context) {
@@ -51,8 +54,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             SliverToBoxAdapter(
               child: _FeedTabs(
-                selected: _selectedFeed,
-                onChanged: (label) => setState(() => _selectedFeed = label),
+                selectedFilter: _selectedFilter,
+                onSelected: (filter) {
+                  setState(() => _selectedFilter = filter);
+                },
               ),
             ),
             StreamBuilder<List<PublicPost>>(
@@ -64,14 +69,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
 
-                final posts = _filterPosts(
-                  snapshot.data ?? const <PublicPost>[],
-                  user?.id,
-                );
+                final allPosts = snapshot.data ?? const <PublicPost>[];
+                final posts = _filterPosts(allPosts, user?.id);
                 if (posts.isEmpty) {
                   return SliverFillRemaining(
                     hasScrollBody: false,
-                    child: _EmptyFeed(label: _selectedFeed),
+                    child: _EmptyFeed(message: _emptyMessage),
                   );
                 }
 
@@ -104,33 +107,36 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<PublicPost> _filterPosts(List<PublicPost> posts, String? currentUserId) {
-    final selected = _selectedFeed.toLowerCase();
-    if (selected == 'following') {
-      final followingIds = currentUserId == null
-          ? const <String>{}
-          : FollowStore.followingIds(currentUserId);
-      return posts
-          .where((post) => followingIds.contains(post.authorId))
-          .toList(growable: false);
-    }
-    if (selected == 'art showcase') {
-      return posts
-          .where((post) => post.type.toLowerCase().contains('art'))
-          .toList(growable: false);
-    }
-    if (selected == 'open comms') {
-      return posts
-          .where((post) {
-            final type = post.type.toLowerCase();
-            final caption = post.caption.toLowerCase();
-            return type.contains('commission') ||
-                type.contains('service') ||
-                caption.contains('open commission') ||
-                caption.contains('open comms');
-          })
-          .toList(growable: false);
-    }
-    return posts;
+    return switch (_selectedFilter) {
+      _FeedFilter.forYou => posts,
+      _FeedFilter.following =>
+        posts
+            .where(
+              (post) => currentUserId != null && post.authorId != currentUserId,
+            )
+            .toList(growable: false),
+      _FeedFilter.artShowcase =>
+        posts
+            .where((post) => post.type.toLowerCase().contains('artwork'))
+            .toList(growable: false),
+      _FeedFilter.openComms =>
+        posts
+            .where((post) {
+              final type = post.type.toLowerCase();
+              return type.contains('commission') || type.contains('service');
+            })
+            .toList(growable: false),
+    };
+  }
+
+  String get _emptyMessage {
+    return switch (_selectedFilter) {
+      _FeedFilter.forYou =>
+        'Create the first artwork, commission, service, progress, or announcement post.',
+      _FeedFilter.following => 'No followed creator posts yet.',
+      _FeedFilter.artShowcase => 'No artwork showcase posts yet.',
+      _FeedFilter.openComms => 'No open commission or service posts yet.',
+    };
   }
 }
 
@@ -192,18 +198,11 @@ class _FeedHeader extends StatelessWidget {
   }
 }
 
-class _FeedTabs extends StatefulWidget {
-  const _FeedTabs({required this.selected, required this.onChanged});
+class _FeedTabs extends StatelessWidget {
+  const _FeedTabs({required this.selectedFilter, required this.onSelected});
 
-  final String selected;
-  final ValueChanged<String> onChanged;
-
-  static const List<String> _labels = [
-    'For You',
-    'Following',
-    'Art Showcase',
-    'Open Comms',
-  ];
+  final _FeedFilter selectedFilter;
+  final ValueChanged<_FeedFilter> onSelected;
 
   @override
   State<_FeedTabs> createState() => _FeedTabsState();
@@ -218,12 +217,26 @@ class _FeedTabsState extends State<_FeedTabs> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         children: [
-          for (final label in _FeedTabs._labels)
-            _FeedChip(
-              label: label,
-              selected: label == widget.selected,
-              onPressed: () => widget.onChanged(label),
-            ),
+          _FeedChip(
+            label: 'For You',
+            selected: selectedFilter == _FeedFilter.forYou,
+            onPressed: () => onSelected(_FeedFilter.forYou),
+          ),
+          _FeedChip(
+            label: 'Following',
+            selected: selectedFilter == _FeedFilter.following,
+            onPressed: () => onSelected(_FeedFilter.following),
+          ),
+          _FeedChip(
+            label: 'Art Showcase',
+            selected: selectedFilter == _FeedFilter.artShowcase,
+            onPressed: () => onSelected(_FeedFilter.artShowcase),
+          ),
+          _FeedChip(
+            label: 'Open Comms',
+            selected: selectedFilter == _FeedFilter.openComms,
+            onPressed: () => onSelected(_FeedFilter.openComms),
+          ),
         ],
       ),
     );
@@ -943,9 +956,9 @@ class _PostViewersSheet extends StatelessWidget {
 }
 
 class _EmptyFeed extends StatelessWidget {
-  const _EmptyFeed({required this.label});
+  const _EmptyFeed({required this.message});
 
-  final String label;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
@@ -968,10 +981,7 @@ class _EmptyFeed extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Create the first artwork, commission, service, progress, or announcement post.',
-              textAlign: TextAlign.center,
-            ),
+            Text(message, textAlign: TextAlign.center),
           ],
         ),
       ),

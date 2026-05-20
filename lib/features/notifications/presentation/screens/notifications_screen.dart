@@ -1,53 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthUser;
 
 import '../../../../app/app_colors.dart';
+import '../../../auth/domain/auth_user.dart';
 
-class NotificationsScreen extends StatelessWidget {
-  const NotificationsScreen({super.key});
+class NotificationsScreen extends StatefulWidget {
+  const NotificationsScreen({
+    super.key,
+    required this.client,
+    required this.currentUser,
+  });
 
-  static const _items = [
-    _NotificationItem(
-      type: 'message',
-      icon: Icons.mark_chat_unread_outlined,
-      title: 'New message alerts',
-      message: 'Direct message notifications from other students appear here.',
-      accent: AppColors.royalAzure,
-    ),
-    _NotificationItem(
-      type: 'heart',
-      icon: Icons.favorite_border,
-      title: 'Heart reactions',
-      message: 'You will see alerts when someone hearts your post.',
-      accent: AppColors.cinnabar,
-    ),
-    _NotificationItem(
-      type: 'share',
-      icon: Icons.share_outlined,
-      title: 'Shared posts',
-      message: 'Track when your posts are shared by other LNU students.',
-      accent: AppColors.regalNavy,
-    ),
-    _NotificationItem(
-      type: 'commission',
-      icon: Icons.assignment_turned_in_outlined,
-      title: 'Commission updates',
-      message: 'Progress, status, and delivery updates for commissions.',
-      accent: AppColors.radioactiveGrass,
-    ),
-    _NotificationItem(
-      type: 'service_inquiry',
-      icon: Icons.design_services_outlined,
-      title: 'Service inquiries',
-      message: 'Questions and requests about your listed services.',
-      accent: AppColors.gold,
-    ),
-  ];
+  final SupabaseClient client;
+  final AuthUser currentUser;
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  late Future<List<_NotificationItem>> _notificationsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _notificationsFuture = _loadNotifications();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final userId = Supabase.instance.client.auth.currentUser?.id ?? '';
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
       appBar: AppBar(

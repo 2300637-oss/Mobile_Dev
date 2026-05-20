@@ -277,9 +277,14 @@ GoRouter _buildRouter(AuthController authController) {
           return StudentProfilePage(
             currentUserId: user.id,
             currentUserEmail: user.email,
-            repository: SupabaseStudentProfileRepository(
-              client: Supabase.instance.client,
-            ),
+            onLogout: () {
+              authController.signOut();
+            },
+            repository: authController.useStaticLogin
+                ? MockProfileRepository()
+                : SupabaseStudentProfileRepository(
+                    client: Supabase.instance.client,
+                  ),
           );
         },
       ),
@@ -344,7 +349,17 @@ GoRouter _buildRouter(AuthController authController) {
       ),
       GoRoute(
         path: '/notifications',
-        builder: (context, state) => const NotificationsScreen(),
+        builder: (context, state) {
+          final user = authController.currentUser;
+          if (user == null) {
+            return const SplashScreen();
+          }
+
+          return NotificationsScreen(
+            client: Supabase.instance.client,
+            currentUser: user,
+          );
+        },
       ),
       GoRoute(
         path: '/commission-requests',

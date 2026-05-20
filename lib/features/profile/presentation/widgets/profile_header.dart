@@ -11,7 +11,9 @@ class ProfileHeader extends StatelessWidget {
   const ProfileHeader({
     super.key,
     required this.profile,
-    required this.onBack,
+    required this.isOwner,
+    required this.onHome,
+    required this.onMyProfile,
     required this.onEditProfile,
     required this.onEditAvatar,
     required this.onEditCover,
@@ -19,10 +21,13 @@ class ProfileHeader extends StatelessWidget {
     required this.onMenu,
     required this.onMessage,
     required this.onShare,
+    this.onLogout,
   });
 
   final StudentProfile profile;
-  final VoidCallback onBack;
+  final bool isOwner;
+  final VoidCallback onHome;
+  final VoidCallback onMyProfile;
   final VoidCallback onEditProfile;
   final VoidCallback onEditAvatar;
   final VoidCallback onEditCover;
@@ -30,6 +35,7 @@ class ProfileHeader extends StatelessWidget {
   final VoidCallback onMenu;
   final VoidCallback onMessage;
   final VoidCallback onShare;
+  final VoidCallback? onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -351,7 +357,7 @@ class _TopHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
       decoration: const BoxDecoration(
         color: SkillHubProfileColors.navy,
         boxShadow: [
@@ -362,63 +368,176 @@ class _TopHeader extends StatelessWidget {
           ),
         ],
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final title = Row(
-            children: [
-              IconButton(
-                tooltip: 'Back',
-                onPressed: onBack,
-                color: SkillHubProfileColors.white,
-                icon: const Icon(Icons.arrow_back),
-              ),
-              const _LogoMark(),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'LNU Student Skills Commission',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+      child: _searchOpen ? _buildSearchRow() : _buildDefaultRow(),
+    );
+  }
+
+  Widget _buildDefaultRow() {
+    return Row(
+      children: [
+        InkWell(
+          key: const Key('profile-logo-home'),
+          borderRadius: BorderRadius.circular(10),
+          onTap: widget.onHome,
+          child: const Padding(
+            padding: EdgeInsets.all(2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _LogoMark(),
+                SizedBox(width: 9),
+                Text(
+                  'LNU SKILLHUB',
                   style: TextStyle(
                     color: SkillHubProfileColors.white,
                     fontWeight: FontWeight.w900,
-                    fontSize: 18,
+                    fontSize: 17,
                   ),
                 ),
+              ],
+            ),
+          ),
+        ),
+        const Spacer(),
+        IconButton(
+          key: const Key('profile-search-button'),
+          tooltip: 'Search',
+          onPressed: _openSearch,
+          color: SkillHubProfileColors.white,
+          icon: const Icon(Icons.search),
+        ),
+        IconButton(
+          tooltip: 'Notifications',
+          onPressed: () {},
+          color: SkillHubProfileColors.white,
+          icon: const Icon(Icons.notifications_outlined),
+        ),
+        PopupMenuButton<_ProfileMenuAction>(
+          key: const Key('profile-menu-button'),
+          tooltip: 'Profile menu',
+          onSelected: _handleMenuAction,
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: _ProfileMenuAction.myProfile,
+              child: ListTile(
+                leading: Icon(Icons.person_outline),
+                title: Text('My Profile'),
+                contentPadding: EdgeInsets.zero,
               ),
-              IconButton(
-                tooltip: 'Notifications',
-                onPressed: onNotifications,
-                color: SkillHubProfileColors.white,
-                icon: const Icon(Icons.notifications_outlined),
-              ),
-              IconButton(
-                tooltip: 'Menu',
-                onPressed: onMenu,
-                color: SkillHubProfileColors.white,
-                icon: const Icon(Icons.menu),
-              ),
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: SkillHubProfileColors.yellow,
-                child: Text(
-                  profile.initials,
-                  style: const TextStyle(
-                    color: SkillHubProfileColors.navy,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 12,
-                  ),
+            ),
+            if (widget.onLogout != null)
+              const PopupMenuItem(
+                value: _ProfileMenuAction.logout,
+                child: ListTile(
+                  leading: Icon(Icons.logout),
+                  title: Text('Logout'),
+                  contentPadding: EdgeInsets.zero,
                 ),
               ),
-            ],
-          );
-
-          return title;
-        },
-      ),
+          ],
+          child: CircleAvatar(
+            radius: 18,
+            backgroundColor: SkillHubProfileColors.yellow,
+            child: Text(
+              widget.profile.initials,
+              style: const TextStyle(
+                color: SkillHubProfileColors.navy,
+                fontWeight: FontWeight.w900,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
+
+  Widget _buildSearchRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 40,
+            child: TextField(
+              key: const Key('profile-search-field'),
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              autofocus: true,
+              textInputAction: TextInputAction.search,
+              style: const TextStyle(color: SkillHubProfileColors.white),
+              decoration: InputDecoration(
+                hintText: 'Search verified students, services, posts...',
+                hintStyle: TextStyle(
+                  color: SkillHubProfileColors.white.withValues(alpha: .65),
+                  fontSize: 13,
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: SkillHubProfileColors.white.withValues(alpha: .7),
+                  size: 20,
+                ),
+                filled: true,
+                fillColor: SkillHubProfileColors.white.withValues(alpha: .14),
+                contentPadding: EdgeInsets.zero,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide(
+                    color: SkillHubProfileColors.white.withValues(alpha: .25),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide(
+                    color: SkillHubProfileColors.white.withValues(alpha: .25),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide(
+                    color: SkillHubProfileColors.white.withValues(alpha: .45),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        IconButton(
+          key: const Key('profile-search-close'),
+          tooltip: 'Close search',
+          onPressed: _closeSearch,
+          color: SkillHubProfileColors.white,
+          icon: const Icon(Icons.close),
+        ),
+      ],
+    );
+  }
+
+  void _openSearch() {
+    setState(() => _searchOpen = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _searchFocusNode.requestFocus();
+      }
+    });
+  }
+
+  void _closeSearch() {
+    _searchController.clear();
+    _searchFocusNode.unfocus();
+    setState(() => _searchOpen = false);
+  }
+
+  void _handleMenuAction(_ProfileMenuAction action) {
+    switch (action) {
+      case _ProfileMenuAction.myProfile:
+        widget.onMyProfile();
+      case _ProfileMenuAction.logout:
+        widget.onLogout?.call();
+    }
+  }
 }
+
+enum _ProfileMenuAction { myProfile, logout }
 
 class _LogoMark extends StatelessWidget {
   const _LogoMark();
@@ -445,11 +564,10 @@ class _LogoMark extends StatelessWidget {
   }
 }
 
-// ignore: unused_element
 class _CoverSection extends StatelessWidget {
-  const _CoverSection({required this.profile, required this.onCamera});
+  const _CoverSection({required this.showEdit, required this.onCamera});
 
-  final StudentProfile profile;
+  final bool showEdit;
   final VoidCallback onCamera;
 
   @override
@@ -484,25 +602,26 @@ class _CoverSection extends StatelessWidget {
               ),
             ),
           ),
-          Positioned(
-            right: 14,
-            bottom: 14,
-            child: OutlinedButton.icon(
-              onPressed: onCamera,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: SkillHubProfileColors.white,
-                backgroundColor: const Color(0x66000000),
-                side: BorderSide(
-                  color: SkillHubProfileColors.white.withValues(alpha: .26),
+          if (showEdit)
+            Positioned(
+              right: 14,
+              bottom: 14,
+              child: OutlinedButton.icon(
+                onPressed: onCamera,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: SkillHubProfileColors.white,
+                  backgroundColor: const Color(0x66000000),
+                  side: BorderSide(
+                    color: SkillHubProfileColors.white.withValues(alpha: .26),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                icon: const Icon(Icons.camera_alt_outlined, size: 16),
+                label: const Text('Edit Cover'),
               ),
-              icon: const Icon(Icons.camera_alt_outlined, size: 16),
-              label: const Text('Edit Cover'),
             ),
-          ),
         ],
       ),
     );
@@ -540,17 +659,15 @@ class _CoverPatternPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// ignore: unused_element
-class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({
     required this.profile,
+    required this.showEdit,
     required this.onEditProfile,
-    required this.onEditAvatar,
-    required this.onMessage,
-    required this.onShare,
   });
 
   final StudentProfile profile;
+  final bool showEdit;
   final VoidCallback onEditProfile;
   final VoidCallback onEditAvatar;
   final VoidCallback onMessage;
@@ -558,9 +675,11 @@ class _ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: profileCardDecoration(),
-      child: Column(
+    return SizedBox(
+      width: 118,
+      height: 118,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
@@ -590,23 +709,7 @@ class _ProfileCard extends StatelessWidget {
                           Expanded(child: info),
                         ],
                       ),
-                      const SizedBox(height: 14),
-                      actions,
-                    ],
-                  );
-                }
-
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    avatar,
-                    const SizedBox(width: 18),
-                    Expanded(child: info),
-                    const SizedBox(width: 12),
-                    actions,
-                  ],
-                );
-              },
+                    ),
             ),
           ),
           const Divider(height: 1, color: Color(0xFFF1F5F9)),
@@ -653,23 +756,22 @@ class _ProfileAvatar extends StatelessWidget {
               ),
             ),
             Positioned(
-              right: 4,
-              bottom: 18,
+              right: 9,
+              bottom: 9,
               child: IconButton.filled(
                 onPressed: onEditProfile,
                 style: IconButton.styleFrom(
                   backgroundColor: SkillHubProfileColors.navy,
                   foregroundColor: SkillHubProfileColors.white,
-                  minimumSize: const Size.square(28),
-                  fixedSize: const Size.square(28),
+                  minimumSize: const Size.square(30),
+                  fixedSize: const Size.square(30),
                   padding: EdgeInsets.zero,
                 ),
-                icon: const Icon(Icons.edit, size: 14),
+                icon: const Icon(Icons.edit, size: 15),
                 tooltip: 'Edit photo',
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -692,27 +794,43 @@ class _ProfileInfo extends StatelessWidget {
   const _ProfileInfo({required this.profile});
 
   final StudentProfile profile;
+  final bool isOwner;
+  final VoidCallback onEditProfile;
+  final VoidCallback onMessage;
+  final VoidCallback onShare;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 14),
+    return Container(
+      decoration: profileCardDecoration(),
+      padding: const EdgeInsets.fromLTRB(16, 66, 16, 0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          Text(
+            profile.fullName,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: SkillHubProfileColors.midBlue,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            profile.username,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: SkillHubProfileColors.textSub,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 8),
           Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 7,
+            runSpacing: 7,
+            alignment: WrapAlignment.center,
             children: [
-              Text(
-                profile.fullName,
-                style: const TextStyle(
-                  color: SkillHubProfileColors.midBlue,
-                  fontSize: 21,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
               if (profile.verified)
                 const _Badge(
                   icon: Icons.verified,
@@ -734,18 +852,11 @@ class _ProfileInfo extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            profile.username,
-            style: const TextStyle(
-              color: SkillHubProfileColors.textSub,
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Wrap(
-            spacing: 14,
+            spacing: 12,
             runSpacing: 6,
+            alignment: WrapAlignment.center,
             children: [
               _MetaItem(icon: Icons.school_outlined, label: profile.college),
               _MetaItem(
@@ -758,77 +869,76 @@ class _ProfileInfo extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 9),
-          Text(
-            profile.bio,
-            style: const TextStyle(
-              color: Color(0xFF475569),
-              fontSize: 13.5,
-              height: 1.5,
+          const SizedBox(height: 10),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 620),
+            child: Text(
+              profile.bio,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF475569),
+                fontSize: 13.5,
+                height: 1.45,
+              ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 6,
             runSpacing: 6,
+            alignment: WrapAlignment.center,
             children: profile.skills.map((skill) => _SkillChip(skill)).toList(),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProfileActions extends StatelessWidget {
-  const _ProfileActions({
-    required this.onEditProfile,
-    required this.onMessage,
-    required this.onShare,
-  });
-
-  final VoidCallback onEditProfile;
-  final VoidCallback onMessage;
-  final VoidCallback onShare;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        alignment: WrapAlignment.end,
-        children: [
-          FilledButton.icon(
-            key: const Key('edit-profile-button'),
-            onPressed: onEditProfile,
-            style: FilledButton.styleFrom(
-              backgroundColor: SkillHubProfileColors.navy,
-              foregroundColor: SkillHubProfileColors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [
+              if (isOwner)
+                FilledButton.icon(
+                  key: const Key('edit-profile-button'),
+                  onPressed: onEditProfile,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: SkillHubProfileColors.navy,
+                    foregroundColor: SkillHubProfileColors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Edit Profile'),
+                )
+              else
+                FilledButton.icon(
+                  onPressed: onMessage,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: SkillHubProfileColors.navy,
+                    foregroundColor: SkillHubProfileColors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                  label: const Text('Message'),
+                ),
+              OutlinedButton.icon(
+                onPressed: onShare,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: SkillHubProfileColors.textMain,
+                  side: const BorderSide(color: SkillHubProfileColors.border),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                icon: const Icon(Icons.share_outlined, size: 16),
+                label: const Text('Share'),
               ),
-            ),
-            icon: const Icon(Icons.edit_outlined, size: 16),
-            label: const Text('Edit Profile'),
+            ],
           ),
-          OutlinedButton.icon(
-            onPressed: onMessage,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: SkillHubProfileColors.textMain,
-              side: const BorderSide(color: SkillHubProfileColors.border),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            icon: const Icon(Icons.chat_bubble_outline, size: 16),
-            label: const Text('Message'),
-          ),
-          IconButton.outlined(
-            tooltip: 'Share profile',
-            onPressed: onShare,
-            icon: const Icon(Icons.share_outlined),
-          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          _StatsRow(profile: profile),
         ],
       ),
     );
@@ -843,7 +953,7 @@ class _StatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
       child: Row(
         children: [
           _StatItem(value: '${profile.stats.posts}', label: 'Posts'),
@@ -882,6 +992,8 @@ class _StatItem extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Color(0xFF94A3B8),
               fontSize: 10.5,
@@ -909,6 +1021,7 @@ class _MetaItem extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           label,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: SkillHubProfileColors.textSub,
             fontSize: 13,
@@ -935,6 +1048,7 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: const BoxConstraints(maxWidth: 220),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: background,

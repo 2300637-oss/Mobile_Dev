@@ -10,22 +10,32 @@ class ProfilePostCard extends StatelessWidget {
     required this.profile,
     required this.liked,
     required this.saved,
+    required this.isOwner,
     required this.onToggleLike,
     required this.onToggleSave,
     required this.onComment,
     required this.onShare,
+    required this.onPinToggle,
+    required this.onEdit,
+    required this.onEditAudience,
     required this.onDelete,
+    required this.onReport,
   });
 
   final ProfilePost post;
   final StudentProfile profile;
   final bool liked;
   final bool saved;
+  final bool isOwner;
   final VoidCallback onToggleLike;
   final VoidCallback onToggleSave;
   final VoidCallback onComment;
   final VoidCallback onShare;
+  final VoidCallback onPinToggle;
+  final VoidCallback onEdit;
+  final VoidCallback onEditAudience;
   final VoidCallback onDelete;
+  final VoidCallback onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -86,13 +96,69 @@ class ProfilePostCard extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton(
+              PopupMenuButton<_PostMenuAction>(
+                key: Key('post-menu-${post.id}'),
                 tooltip: 'More',
-                onPressed: () => _showPostMenu(context),
-                icon: const Icon(Icons.more_horiz, color: Color(0xFF94A3B8)),
+                onSelected: _handleMenuAction,
+                itemBuilder: (context) => isOwner
+                    ? [
+                        PopupMenuItem(
+                          value: _PostMenuAction.pin,
+                          child: Text(
+                            post.isPinned ? 'Unpin post' : 'Pin post',
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: _PostMenuAction.save,
+                          child: Text('Save post'),
+                        ),
+                        const PopupMenuItem(
+                          value: _PostMenuAction.edit,
+                          child: Text('Edit post'),
+                        ),
+                        const PopupMenuItem(
+                          value: _PostMenuAction.editAudience,
+                          child: Text('Edit audience'),
+                        ),
+                        const PopupMenuItem(
+                          value: _PostMenuAction.delete,
+                          child: Text('Delete post'),
+                        ),
+                      ]
+                    : const [
+                        PopupMenuItem(
+                          value: _PostMenuAction.report,
+                          child: Text('Report post'),
+                        ),
+                      ],
+                child: const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Icon(Icons.more_horiz, color: Color(0xFF94A3B8)),
+                ),
               ),
             ],
           ),
+          if (post.isPinned) ...[
+            const SizedBox(height: 8),
+            const Row(
+              children: [
+                Icon(
+                  Icons.push_pin,
+                  size: 14,
+                  color: SkillHubProfileColors.navy,
+                ),
+                SizedBox(width: 5),
+                Text(
+                  'Pinned post',
+                  style: TextStyle(
+                    color: SkillHubProfileColors.navy,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
           Text(
             post.content,
@@ -196,6 +262,8 @@ class ProfilePostCard extends StatelessWidget {
     );
   }
 }
+
+enum _PostMenuAction { pin, save, edit, editAudience, delete, report }
 
 class _VisibilityPill extends StatelessWidget {
   const _VisibilityPill({required this.visibility});

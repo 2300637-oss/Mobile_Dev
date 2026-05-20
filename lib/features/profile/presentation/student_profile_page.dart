@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../posts/data/public_post_repository.dart';
 import '../../posts/data/supabase_public_post_repository.dart';
@@ -15,6 +16,7 @@ import '../data/student_profile_repository.dart';
 import 'widgets/edit_profile_sheet.dart';
 import 'widgets/portfolio_card.dart';
 import 'widgets/post_composer.dart';
+import 'widgets/profile_edit_sheets.dart';
 import 'widgets/profile_header.dart';
 import 'widgets/profile_post_card.dart';
 import 'widgets/profile_style.dart';
@@ -23,16 +25,22 @@ import 'widgets/review_card.dart';
 import 'widgets/service_card.dart';
 
 class StudentProfilePage extends StatefulWidget {
-  const StudentProfilePage({
+  StudentProfilePage({
     super.key,
     StudentProfileRepository? repository,
     this.currentUserId,
     this.currentUserEmail,
-  }) : repository = repository ?? const _DefaultMockRepository();
+    this.profileUserId,
+    this.onHomeRequested,
+    this.onLogout,
+  }) : repository = repository ?? MockProfileRepository();
 
   final StudentProfileRepository repository;
   final String? currentUserId;
   final String? currentUserEmail;
+  final String? profileUserId;
+  final VoidCallback? onHomeRequested;
+  final VoidCallback? onLogout;
 
   @override
   State<StudentProfilePage> createState() => _StudentProfilePageState();
@@ -69,6 +77,8 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
 
   Widget _buildProfile(BuildContext context, StudentProfileBundle bundle) {
     final profile = bundle.profile;
+    final isOwner =
+        widget.currentUserId != null && widget.currentUserId == profile.userId;
 
     return SingleChildScrollView(
       child: Center(
@@ -80,20 +90,13 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
               children: [
                 ProfileHeader(
                   profile: profile,
-                  onBack: () {
-                    if (context.canPop()) {
-                      context.pop();
-                    } else {
-                      context.go('/home');
-                    }
-                  },
+                  isOwner: isOwner,
+                  onHome: _goHome,
+                  onMyProfile: _goMyProfile,
                   onEditProfile: _showEditProfileSheet,
-                  onEditAvatar: _pickAvatarImage,
-                  onEditCover: _pickCoverImage,
-                  onNotifications: () => context.go('/notifications'),
-                  onMenu: _showProfileMenu,
-                  onMessage: () => _showSnack('Messaging opens from chat.'),
+                  onMessage: _startMessage,
                   onShare: () => _showSnack('Profile share link copied.'),
+                  onLogout: widget.onLogout,
                 ),
                 const SizedBox(height: 14),
                 ProfileTabs(
@@ -107,12 +110,26 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
                     final main = _MainTabContent(
                       activeTab: _activeTab,
                       bundle: bundle,
+                      isOwner: isOwner,
+                      currentUserId: widget.currentUserId,
                       likedPostIds: _likedPostIds,
                       savedPostIds: _savedPostIds,
                       onCreatePost: _createPost,
                       onToggleLike: _toggleLike,
                       onToggleSave: _toggleSave,
-                      onDeletePost: _deletePost,
+                      onTogglePin: _togglePin,
+                      onEditPost: _showEditPostSheet,
+                      onEditPostAudience: _showEditAudienceSheet,
+                      onDeletePost: _confirmDeletePost,
+                      onReportPost: _reportPost,
+                      onRequestCommission: _requestCommission,
+                      onCreateService: _showServiceSheet,
+                      onEditService: _showServiceSheet,
+                      onDeleteService: _confirmDeleteService,
+                      onEditCv: _showCvSheet,
+                      onAddPortfolioItem: _showPortfolioItemSheet,
+                      onEditPortfolioItem: _showPortfolioItemSheet,
+                      onDeletePortfolioItem: _confirmDeletePortfolioItem,
                       onSnack: _showSnack,
                       onUploadCv: _pickCvFile,
                       onAddPortfolioLink: _showAddPortfolioLinkDialog,
@@ -124,10 +141,20 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
                         client: Supabase.instance.client,
                       ),
                     );
+                    ProfileService? requestableService;
+                    for (final service in bundle.services) {
+                      if (service.availability.canRequest) {
+                        requestableService = service;
+                        break;
+                      }
+                    }
                     final side = _SideProfilePanels(
                       profile: profile,
-                      onRequest: () =>
-                          _showSnack('Commission request started.'),
+                      isOwner: isOwner,
+                      canRequestCommission: requestableService != null,
+                      onRequest: requestableService == null
+                          ? null
+                          : () => _requestCommission(requestableService!),
                     );
 
                     if (!wide) {
@@ -163,7 +190,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
 
     try {
       final bundle = await widget.repository.loadProfile(
-        userId: widget.currentUserId,
+        userId: widget.profileUserId ?? widget.currentUserId,
         email: widget.currentUserEmail,
       );
       if (!mounted) {
@@ -207,9 +234,31 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
         profile: profile.copyWith(
           stats: profile.stats.copyWith(posts: profile.stats.posts + 1),
         ),
-        posts: [post, ...bundle.posts],
+        posts: _orderedPosts([post, ...bundle.posts]),
       );
     });
+  }
+
+  void _goHome() {
+    if (widget.onHomeRequested != null) {
+      widget.onHomeRequested!();
+      return;
+    }
+    // TODO: Home feed currently refreshes through its Supabase stream. If a
+    // manual refresh hook is added later, trigger it here before navigation.
+    context.go('/home');
+  }
+
+  void _goMyProfile() {
+    context.go('/profile');
+  }
+
+  void _startMessage() {
+    final bundle = _bundle;
+    if (bundle == null || widget.currentUserId == bundle.profile.userId) {
+      return;
+    }
+    _showSnack('Messaging will be available soon.');
   }
 
   Future<void> _showEditProfileSheet() async {
@@ -509,12 +558,25 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
     });
   }
 
-  void _toggleSave(String postId) {
+  Future<void> _toggleSave(String postId) async {
+    final userId = widget.currentUserId;
     setState(() {
       if (!_savedPostIds.add(postId)) {
         _savedPostIds.remove(postId);
       }
     });
+    if (userId == null) {
+      return;
+    }
+    try {
+      if (_savedPostIds.contains(postId)) {
+        await widget.repository.savePost(postId: postId, userId: userId);
+      } else {
+        await widget.repository.unsavePost(postId: postId, userId: userId);
+      }
+    } catch (_) {
+      _showSnack('Saved locally. Live sync is unavailable.');
+    }
   }
 
   Future<void> _deletePost(String postId) async {
@@ -565,9 +627,13 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    final updated = post.copyWith(isPinned: !post.isPinned);
+    _replacePost(updated);
+    try {
+      await widget.repository.pinPost(post: post, pinned: updated.isPinned);
+    } catch (_) {
+      _showSnack('Pin updated locally. Live sync is unavailable.');
+    }
   }
 
   String _friendlyProfileError(Object error, String fallback) {
@@ -592,32 +658,337 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
   }
 }
 
-class _DefaultMockRepository implements StudentProfileRepository {
-  const _DefaultMockRepository();
-
-  @override
-  Future<ProfilePost> createPost({
-    required String profileId,
-    required String authorId,
-    required String content,
-    required VisibilityType visibility,
-  }) {
-    return MockProfileRepository().createPost(
-      profileId: profileId,
-      authorId: authorId,
-      content: content,
-      visibility: visibility,
+  Future<void> _showEditPostSheet(ProfilePost post) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => EditPostSheet(
+        post: post,
+        onSave: (updated) async {
+          _replacePost(updated);
+          try {
+            await widget.repository.updatePost(updated);
+          } catch (_) {
+            _showSnack('Post updated locally. Live sync is unavailable.');
+          }
+        },
+      ),
     );
   }
 
-  @override
-  Future<StudentProfileBundle> loadProfile({String? userId, String? email}) {
-    return MockProfileRepository().loadProfile(userId: userId, email: email);
+  Future<void> _showEditAudienceSheet(ProfilePost post) async {
+    final selected = await showModalBottomSheet<VisibilityType>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => AudienceSheet(selected: post.visibility),
+    );
+    if (selected == null) {
+      return;
+    }
+    final updated = post.copyWith(visibility: selected);
+    _replacePost(updated);
+    try {
+      await widget.repository.updatePostVisibility(
+        post: post,
+        visibility: selected,
+      );
+    } catch (_) {
+      _showSnack('Audience updated locally. Live sync is unavailable.');
+    }
   }
 
-  @override
-  Future<StudentProfile> updateProfile(StudentProfile profile) {
-    return MockProfileRepository().updateProfile(profile);
+  Future<void> _confirmDeletePost(ProfilePost post) async {
+    final confirmed = await _confirm(
+      title: 'Delete post?',
+      message: 'This removes the post from your profile.',
+    );
+    if (!confirmed) {
+      return;
+    }
+    final bundle = _bundle;
+    if (bundle == null) {
+      return;
+    }
+    setState(() {
+      _bundle = bundle.copyWith(
+        posts: bundle.posts.where((item) => item.id != post.id).toList(),
+      );
+    });
+    try {
+      await widget.repository.deletePost(post);
+    } catch (_) {
+      _showSnack('Post deleted locally. Live sync is unavailable.');
+    }
+  }
+
+  Future<void> _reportPost(ProfilePost post) async {
+    final reporterId = widget.currentUserId;
+    if (reporterId == null) {
+      _showSnack('Sign in to report posts.');
+      return;
+    }
+    try {
+      await widget.repository.reportPost(
+        postId: post.id,
+        reporterId: reporterId,
+      );
+      _showSnack('Post reported for moderation.');
+    } catch (_) {
+      _showSnack('Unable to report this post right now.');
+    }
+  }
+
+  Future<void> _requestCommission(ProfileService service) async {
+    final bundle = _bundle;
+    final requesterId = widget.currentUserId;
+    if (bundle == null || requesterId == null) {
+      _showSnack('Sign in to request a commission.');
+      return;
+    }
+    try {
+      await widget.repository.requestCommission(
+        service: service,
+        requesterId: requesterId,
+        profileOwnerId: bundle.profile.userId,
+      );
+      _showSnack('Commission request started.');
+    } on ProfileActionBlocked catch (error) {
+      _showSnack(error.message);
+    } catch (_) {
+      _showSnack('Commission requests will be available soon.');
+    }
+  }
+
+  Future<void> _showServiceSheet([ProfileService? service]) async {
+    final bundle = _bundle;
+    if (bundle == null) {
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => ServiceEditSheet(
+        service: service,
+        profileId: bundle.profile.id,
+        onSave: (saved) async {
+          final isNew = service == null;
+          final localService = saved.copyWith(
+            id: saved.id.isEmpty
+                ? 'local-service-${DateTime.now().microsecondsSinceEpoch}'
+                : saved.id,
+          );
+          setState(() {
+            _bundle = bundle.copyWith(
+              services: isNew
+                  ? [localService, ...bundle.services]
+                  : bundle.services
+                        .map(
+                          (item) =>
+                              item.id == localService.id ? localService : item,
+                        )
+                        .toList(),
+            );
+          });
+          try {
+            if (isNew) {
+              await widget.repository.createService(localService);
+            } else {
+              await widget.repository.updateService(localService);
+            }
+          } catch (_) {
+            _showSnack('Service saved locally. Live sync is unavailable.');
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteService(ProfileService service) async {
+    final bundle = _bundle;
+    if (bundle == null) {
+      return;
+    }
+    final confirmed = await _confirm(
+      title: 'Delete service?',
+      message: 'Students will no longer see this commission offer.',
+    );
+    if (!confirmed) {
+      return;
+    }
+    setState(() {
+      _bundle = bundle.copyWith(
+        services: bundle.services
+            .where((item) => item.id != service.id)
+            .toList(),
+      );
+    });
+    try {
+      await widget.repository.deleteService(service);
+    } catch (_) {
+      _showSnack('Service deleted locally. Live sync is unavailable.');
+    }
+  }
+
+  Future<void> _showCvSheet() async {
+    final bundle = _bundle;
+    if (bundle == null) {
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => CvEditSheet(
+        profile: bundle.profile,
+        onSave: (cvUrl) async {
+          final profile = bundle.profile.copyWith(cvUrl: cvUrl);
+          setState(() => _bundle = bundle.copyWith(profile: profile));
+          try {
+            await widget.repository.updateCv(
+              profile: bundle.profile,
+              cvUrl: cvUrl,
+            );
+          } catch (_) {
+            _showSnack('CV updated locally. File upload is still pending.');
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _showPortfolioItemSheet([PortfolioItem? item]) async {
+    final bundle = _bundle;
+    if (bundle == null) {
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => PortfolioItemEditSheet(
+        item: item,
+        profileId: bundle.profile.id,
+        onSave: (saved) async {
+          final isNew = item == null;
+          final localItem = saved.copyWith(
+            id: saved.id.isEmpty
+                ? 'local-portfolio-${DateTime.now().microsecondsSinceEpoch}'
+                : saved.id,
+          );
+          setState(() {
+            _bundle = bundle.copyWith(
+              portfolioItems: isNew
+                  ? [localItem, ...bundle.portfolioItems]
+                  : bundle.portfolioItems
+                        .map(
+                          (entry) =>
+                              entry.id == localItem.id ? localItem : entry,
+                        )
+                        .toList(),
+            );
+          });
+          try {
+            if (isNew) {
+              await widget.repository.createPortfolioItem(localItem);
+            } else {
+              await widget.repository.updatePortfolioItem(localItem);
+            }
+          } catch (_) {
+            _showSnack(
+              'Portfolio saved locally. File upload is still pending.',
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _confirmDeletePortfolioItem(PortfolioItem item) async {
+    final bundle = _bundle;
+    if (bundle == null) {
+      return;
+    }
+    final confirmed = await _confirm(
+      title: 'Delete portfolio item?',
+      message: 'This removes the project from your profile.',
+    );
+    if (!confirmed) {
+      return;
+    }
+    setState(() {
+      _bundle = bundle.copyWith(
+        portfolioItems: bundle.portfolioItems
+            .where((entry) => entry.id != item.id)
+            .toList(),
+      );
+    });
+    try {
+      await widget.repository.deletePortfolioItem(item);
+    } catch (_) {
+      _showSnack('Portfolio item deleted locally. Live sync is unavailable.');
+    }
+  }
+
+  void _replacePost(ProfilePost updated) {
+    final bundle = _bundle;
+    if (bundle == null) {
+      return;
+    }
+    setState(() {
+      _bundle = bundle.copyWith(
+        posts: _orderedPosts(
+          bundle.posts
+              .map((post) => post.id == updated.id ? updated : post)
+              .toList(),
+        ),
+      );
+    });
+  }
+
+  List<ProfilePost> _orderedPosts(List<ProfilePost> posts) {
+    final sorted = [...posts];
+    sorted.sort((left, right) {
+      if (left.isPinned != right.isPinned) {
+        return left.isPinned ? -1 : 1;
+      }
+      return right.createdAt.compareTo(left.createdAt);
+    });
+    return sorted;
+  }
+
+  Future<bool> _confirm({
+    required String title,
+    required String message,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -703,12 +1074,26 @@ class _MainTabContent extends StatelessWidget {
   const _MainTabContent({
     required this.activeTab,
     required this.bundle,
+    required this.isOwner,
+    required this.currentUserId,
     required this.likedPostIds,
     required this.savedPostIds,
     required this.onCreatePost,
     required this.onToggleLike,
     required this.onToggleSave,
+    required this.onTogglePin,
+    required this.onEditPost,
+    required this.onEditPostAudience,
     required this.onDeletePost,
+    required this.onReportPost,
+    required this.onRequestCommission,
+    required this.onCreateService,
+    required this.onEditService,
+    required this.onDeleteService,
+    required this.onEditCv,
+    required this.onAddPortfolioItem,
+    required this.onEditPortfolioItem,
+    required this.onDeletePortfolioItem,
     required this.onSnack,
     required this.onUploadCv,
     required this.onAddPortfolioLink,
@@ -721,12 +1106,26 @@ class _MainTabContent extends StatelessWidget {
 
   final ProfileTab activeTab;
   final StudentProfileBundle bundle;
+  final bool isOwner;
+  final String? currentUserId;
   final Set<String> likedPostIds;
   final Set<String> savedPostIds;
   final void Function(String content, VisibilityType visibility) onCreatePost;
   final ValueChanged<String> onToggleLike;
   final ValueChanged<String> onToggleSave;
-  final ValueChanged<String> onDeletePost;
+  final ValueChanged<ProfilePost> onTogglePin;
+  final ValueChanged<ProfilePost> onEditPost;
+  final ValueChanged<ProfilePost> onEditPostAudience;
+  final ValueChanged<ProfilePost> onDeletePost;
+  final ValueChanged<ProfilePost> onReportPost;
+  final ValueChanged<ProfileService> onRequestCommission;
+  final VoidCallback onCreateService;
+  final ValueChanged<ProfileService> onEditService;
+  final ValueChanged<ProfileService> onDeleteService;
+  final VoidCallback onEditCv;
+  final VoidCallback onAddPortfolioItem;
+  final ValueChanged<PortfolioItem> onEditPortfolioItem;
+  final ValueChanged<PortfolioItem> onDeletePortfolioItem;
   final ValueChanged<String> onSnack;
   final VoidCallback onUploadCv;
   final VoidCallback onAddPortfolioLink;
@@ -741,12 +1140,27 @@ class _MainTabContent extends StatelessWidget {
     return switch (activeTab) {
       ProfileTab.posts => _PostsTab(
         bundle: bundle,
+        isOwner: isOwner,
+        currentUserId: currentUserId,
         likedPostIds: likedPostIds,
         savedPostIds: savedPostIds,
         onCreatePost: onCreatePost,
         onToggleLike: onToggleLike,
         onToggleSave: onToggleSave,
+        onTogglePin: onTogglePin,
+        onEditPost: onEditPost,
+        onEditPostAudience: onEditPostAudience,
         onDeletePost: onDeletePost,
+        onReportPost: onReportPost,
+        onSnack: onSnack,
+      ),
+      ProfileTab.services => _ServicesTab(
+        bundle: bundle,
+        isOwner: isOwner,
+        onRequestCommission: onRequestCommission,
+        onCreateService: onCreateService,
+        onEditService: onEditService,
+        onDeleteService: onDeleteService,
         onSnack: onSnack,
         currentUserId: currentUserId,
         publicPostsRepository: publicPostsRepository,
@@ -759,22 +1173,23 @@ class _MainTabContent extends StatelessWidget {
       ProfileTab.portfolio => PortfolioSection(
         profile: bundle.profile,
         items: bundle.portfolioItems,
+        isOwner: isOwner,
         onViewCv: () =>
-            _openExternalLink(context, bundle.profile.cvUrl, onSnack),
-        onDownloadCv: () => _shareExternalLink(
-          bundle.profile.cvUrl,
-          onSnack,
-          emptyMessage: 'Upload your CV first.',
-        ),
-        onUploadCv: onUploadCv,
-        onAddLink: onAddPortfolioLink,
-        onAddProject: onAddProject,
+            onSnack('CV viewer will open when file storage is wired.'),
+        onDownloadCv: () =>
+            onSnack('CV download will be available after storage setup.'),
+        onEditCv: onEditCv,
+        onAddLink: () => onSnack('Portfolio link editor is a TODO.'),
+        onAddProject: onAddPortfolioItem,
+        onEditItem: onEditPortfolioItem,
+        onDeleteItem: onDeletePortfolioItem,
       ),
       ProfileTab.reviews => ReviewsSection(
         profile: bundle.profile,
         reviews: bundle.reviews,
         ratingDistribution: bundle.ratingDistribution,
         onAddReview: onCreateReview,
+        isOwner: isOwner,
       ),
       ProfileTab.about => _AboutTab(profile: bundle.profile),
     };
@@ -784,24 +1199,37 @@ class _MainTabContent extends StatelessWidget {
 class _PostsTab extends StatelessWidget {
   const _PostsTab({
     required this.bundle,
+    required this.isOwner,
+    required this.currentUserId,
     required this.likedPostIds,
     required this.savedPostIds,
     required this.onCreatePost,
     required this.onToggleLike,
     required this.onToggleSave,
+    required this.onTogglePin,
+    required this.onEditPost,
+    required this.onEditPostAudience,
     required this.onDeletePost,
+    required this.onReportPost,
     required this.onSnack,
     required this.currentUserId,
     required this.publicPostsRepository,
   });
 
   final StudentProfileBundle bundle;
+  final bool isOwner;
+  final String? currentUserId;
   final Set<String> likedPostIds;
   final Set<String> savedPostIds;
   final void Function(String content, VisibilityType visibility) onCreatePost;
   final ValueChanged<String> onToggleLike;
   final ValueChanged<String> onToggleSave;
   final ValueChanged<String> onDeletePost;
+  final ValueChanged<ProfilePost> onTogglePin;
+  final ValueChanged<ProfilePost> onEditPost;
+  final ValueChanged<ProfilePost> onEditPostAudience;
+  final ValueChanged<ProfilePost> onDeletePost;
+  final ValueChanged<ProfilePost> onReportPost;
   final ValueChanged<String> onSnack;
   final String? currentUserId;
   final PublicPostDataSource publicPostsRepository;
@@ -830,6 +1258,7 @@ class _PostsTab extends StatelessWidget {
             profile: bundle.profile,
             liked: likedPostIds.contains(post.id),
             saved: savedPostIds.contains(post.id),
+            isOwner: currentUserId != null && currentUserId == post.authorId,
             onToggleLike: () => onToggleLike(post.id),
             onToggleSave: () => onToggleSave(post.id),
             onComment: () =>
@@ -1326,11 +1755,20 @@ class _ServiceOfferDialogState extends State<_ServiceOfferDialog> {
 class _ServicesTab extends StatelessWidget {
   const _ServicesTab({
     required this.bundle,
-    required this.onSnack,
+    required this.isOwner,
+    required this.onRequestCommission,
     required this.onCreateService,
+    required this.onEditService,
+    required this.onDeleteService,
+    required this.onSnack,
   });
 
   final StudentProfileBundle bundle;
+  final bool isOwner;
+  final ValueChanged<ProfileService> onRequestCommission;
+  final VoidCallback onCreateService;
+  final ValueChanged<ProfileService> onEditService;
+  final ValueChanged<ProfileService> onDeleteService;
   final ValueChanged<String> onSnack;
   final VoidCallback onCreateService;
 
@@ -1364,11 +1802,21 @@ class _ServicesTab extends StatelessWidget {
                       label: Text('${bundle.services.length} offers'),
                       visualDensity: VisualDensity.compact,
                     ),
+                    if (isOwner) ...[
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: onCreateService,
+                        icon: const Icon(Icons.add, size: 15),
+                        label: const Text('Add Service'),
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Browse available services and request a commission. Payment and delivery details are shown per offer.',
+                Text(
+                  isOwner
+                      ? 'Manage the services students can request from your SkillHub profile.'
+                      : 'Browse available services and request a commission. Payment and delivery details are shown per offer.',
                   style: TextStyle(
                     color: SkillHubProfileColors.textSub,
                     fontSize: 12,
@@ -1506,10 +1954,17 @@ class _AboutTab extends StatelessWidget {
 }
 
 class _SideProfilePanels extends StatelessWidget {
-  const _SideProfilePanels({required this.profile, required this.onRequest});
+  const _SideProfilePanels({
+    required this.profile,
+    required this.isOwner,
+    required this.canRequestCommission,
+    required this.onRequest,
+  });
 
   final StudentProfile profile;
-  final VoidCallback onRequest;
+  final bool isOwner;
+  final bool canRequestCommission;
+  final VoidCallback? onRequest;
 
   @override
   Widget build(BuildContext context) {
@@ -1584,61 +2039,64 @@ class _SideProfilePanels extends StatelessWidget {
                 .toList(),
           ),
         ),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFECFDF5), Color(0xFFF0FDF4)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+        if (profile.availability.canRequest)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFECFDF5), Color(0xFFF0FDF4)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFA7F3D0)),
             ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFA7F3D0)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.bolt, color: Color(0xFF059669), size: 17),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Open for Commissions',
-                      style: TextStyle(
-                        color: Color(0xFF065F46),
-                        fontWeight: FontWeight.w900,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.bolt, color: Color(0xFF059669), size: 17),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Open for Commissions',
+                        style: TextStyle(
+                          color: Color(0xFF065F46),
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${profile.fullName} is currently accepting commission requests. Check the Services tab for pricing and delivery details.',
+                  style: const TextStyle(
+                    color: Color(0xFF047857),
+                    fontSize: 12,
+                    height: 1.5,
+                  ),
+                ),
+                if (!isOwner && canRequestCommission) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: onRequest,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF059669),
+                      ),
+                      icon: const Icon(Icons.send_outlined, size: 15),
+                      label: const Text('Request Commission'),
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'This student is currently accepting commission requests. Check the Services tab for pricing and delivery details.',
-                style: TextStyle(
-                  color: Color(0xFF047857),
-                  fontSize: 12,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: onRequest,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF059669),
-                  ),
-                  icon: const Icon(Icons.send_outlined, size: 15),
-                  label: const Text('Request Commission'),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
