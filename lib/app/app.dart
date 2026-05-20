@@ -14,6 +14,12 @@ import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/register_screen.dart';
 import '../features/auth/presentation/screens/registration_complete_screen.dart';
 import '../features/auth/presentation/screens/splash_screen.dart';
+import '../features/chat/data/local_chat_repository.dart';
+import '../features/chat/data/supabase_chat_repository.dart';
+import '../features/chat/presentation/controllers/chat_list_controller.dart';
+import '../features/chat/presentation/controllers/chat_thread_controller.dart';
+import '../features/chat/presentation/screens/chat_screen.dart';
+import '../features/chat/presentation/screens/chat_thread_screen.dart';
 import '../features/home/presentation/screens/home_screen.dart';
 import '../features/posts/data/supabase_public_post_repository.dart';
 import '../features/posts/presentation/controllers/create_post_controller.dart';
@@ -183,6 +189,46 @@ GoRouter _buildRouter(AuthController authController) {
       GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
       GoRoute(
+        path: '/chat',
+        builder: (context, state) {
+          final user = authController.currentUser;
+          if (user == null) {
+            return const SplashScreen();
+          }
+
+          final repository = authController.useStaticLogin
+              ? LocalChatRepository()
+              : SupabaseChatRepository(client: Supabase.instance.client);
+          return ChangeNotifierProvider(
+            create: (_) =>
+                ChatListController(repository: repository, user: user)..start(),
+            child: const ChatScreen(),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/chat/:conversationId',
+        builder: (context, state) {
+          final user = authController.currentUser;
+          final conversationId = state.pathParameters['conversationId'] ?? '';
+          if (user == null || conversationId.isEmpty) {
+            return const SplashScreen();
+          }
+
+          final repository = authController.useStaticLogin
+              ? LocalChatRepository()
+              : SupabaseChatRepository(client: Supabase.instance.client);
+          return ChangeNotifierProvider(
+            create: (_) => ChatThreadController(
+              repository: repository,
+              user: user,
+              conversationId: conversationId,
+            )..start(),
+            child: ChatThreadScreen(conversationId: conversationId),
+          );
+        },
+      ),
+      GoRoute(
         path: '/admin/dashboard',
         builder: (context, state) =>
             const AdminGuard(child: AdminDashboardPage()),
@@ -223,11 +269,15 @@ GoRouter _buildRouter(AuthController authController) {
         path: '/users/:uid',
         builder: (context, state) {
           final uid = state.pathParameters['uid'] ?? '';
-          if (uid.isEmpty) {
+          final currentUser = authController.currentUser;
+          if (uid.isEmpty || currentUser == null) {
             return const SplashScreen();
           }
 
           final supabaseClient = Supabase.instance.client;
+          final chatRepository = authController.useStaticLogin
+              ? LocalChatRepository()
+              : SupabaseChatRepository(client: supabaseClient);
           return ChangeNotifierProvider(
             create: (_) => ProfileController(
               profileRepository: SupabaseProfileRepository(
@@ -239,6 +289,8 @@ GoRouter _buildRouter(AuthController authController) {
               postsRepository: SupabasePublicPostRepository(
                 client: supabaseClient,
               ),
+              chatRepository: chatRepository,
+              currentUser: currentUser,
             ),
           );
         },
@@ -266,14 +318,6 @@ GoRouter _buildRouter(AuthController authController) {
           icon: Icons.design_services_outlined,
           message:
               'Profile services will show commission offers and sample work.',
-        ),
-      ),
-      GoRoute(
-        path: '/chat',
-        builder: (context, state) => const ModulePlaceholderScreen(
-          title: 'Chat',
-          icon: Icons.chat_bubble_outline,
-          message: 'One-to-one real-time messaging will live here.',
         ),
       ),
       GoRoute(

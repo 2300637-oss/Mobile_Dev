@@ -3,16 +3,26 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/app_colors.dart';
+import '../../../auth/domain/auth_user.dart';
 import '../../../auth/presentation/widgets/auth_error_banner.dart';
+import '../../../chat/data/chat_repository.dart';
+import '../../../chat/domain/chat_models.dart';
 import '../../../posts/data/public_post_repository.dart';
 import '../../../posts/domain/public_post.dart';
 import '../../domain/user_profile.dart';
 import '../controllers/profile_controller.dart';
 
 class PublicProfileScreen extends StatelessWidget {
-  const PublicProfileScreen({super.key, required this.postsRepository});
+  const PublicProfileScreen({
+    super.key,
+    required this.postsRepository,
+    required this.chatRepository,
+    required this.currentUser,
+  });
 
   final PublicPostDataSource postsRepository;
+  final ChatDataSource chatRepository;
+  final AuthUser currentUser;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +53,11 @@ class PublicProfileScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                     ],
-                    _PublicProfileHeader(profile: profile),
+                    _PublicProfileHeader(
+                      profile: profile,
+                      currentUser: currentUser,
+                      chatRepository: chatRepository,
+                    ),
                     const SizedBox(height: 16),
                     _ProfileInfo(profile: profile),
                     if (profile != null) ...[
@@ -121,9 +135,15 @@ class _SharedPostsLink extends StatelessWidget {
 }
 
 class _PublicProfileHeader extends StatelessWidget {
-  const _PublicProfileHeader({required this.profile});
+  const _PublicProfileHeader({
+    required this.profile,
+    required this.currentUser,
+    required this.chatRepository,
+  });
 
   final UserProfile? profile;
+  final AuthUser currentUser;
+  final ChatDataSource chatRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -137,6 +157,7 @@ class _PublicProfileHeader extends StatelessWidget {
       profile?.department ?? '',
       if (profile?.yearLevel.isNotEmpty == true) 'Year ${profile!.yearLevel}',
     ].where((value) => value.isNotEmpty).join(' - ');
+    final canChat = profile != null && profile!.uid != currentUser.id;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -183,8 +204,30 @@ class _PublicProfileHeader extends StatelessWidget {
                     style: const TextStyle(color: Color(0xFFDDE7FF)),
                   ),
                   const SizedBox(height: 10),
-                  _AvailabilityPill(
-                    status: profile?.availabilityStatus ?? 'available',
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      _AvailabilityPill(
+                        status: profile?.availabilityStatus ?? 'available',
+                      ),
+                      if (canChat)
+                        FilledButton.icon(
+                          onPressed: () => _startChat(context),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.royalAzure,
+                            foregroundColor: AppColors.white,
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                          ),
+                          icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                          label: const Text('Chat'),
+                        ),
+                    ],
                   ),
                 ],
               ),
@@ -193,6 +236,45 @@ class _PublicProfileHeader extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _startChat(BuildContext context) async {
+    final targetProfile = profile;
+    if (targetProfile == null) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final conversationId = await chatRepository.startConversation(
+        currentUser: currentUser,
+        peer: ChatContact(
+          id: targetProfile.uid,
+          name: targetProfile.username.isNotEmpty
+              ? targetProfile.username
+              : targetProfile.fullName.isNotEmpty
+              ? targetProfile.fullName
+              : 'LNU student',
+          detail: [
+            targetProfile.college,
+            targetProfile.department,
+            if (targetProfile.yearLevel.isNotEmpty)
+              'Year ${targetProfile.yearLevel}',
+          ].where((value) => value.isNotEmpty).join(' - '),
+          avatarUrl: targetProfile.profilePictureUrl,
+        ),
+      );
+
+      if (context.mounted) {
+        context.go('/chat/$conversationId');
+      }
+    } catch (_) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Unable to start chat right now.')),
+        );
+    }
   }
 }
 
