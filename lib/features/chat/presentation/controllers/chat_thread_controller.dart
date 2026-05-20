@@ -26,17 +26,19 @@ class ChatThreadController extends ChangeNotifier {
 
   List<ChatMessage> messages = const [];
   List<String> typingUserIds = const [];
+  ChatContact? peer;
   bool isLoading = true;
   bool isSending = false;
   bool isUploading = false;
   String? errorMessage;
 
   void start() {
+    _loadPeer();
     _messagesSubscription = _repository
         .watchMessages(conversationId: conversationId, currentUserId: _user.id)
         .listen(
           (items) {
-            messages = items;
+            messages = [...items]..sort(_compareMessages);
             isLoading = false;
             errorMessage = null;
             notifyListeners();
@@ -57,6 +59,18 @@ class ChatThreadController extends ChangeNotifier {
           typingUserIds = userIds;
           notifyListeners();
         });
+  }
+
+  Future<void> _loadPeer() async {
+    try {
+      peer = await _repository.fetchConversationPeer(
+        conversationId: conversationId,
+        currentUserId: _user.id,
+      );
+      notifyListeners();
+    } catch (_) {
+      // The chat can still work without peer metadata.
+    }
   }
 
   Future<void> sendText(String value) async {
@@ -188,6 +202,12 @@ class ChatThreadController extends ChangeNotifier {
   }
 
   bool isMine(ChatMessage message) => message.senderId == _user.id;
+
+  int _compareMessages(ChatMessage left, ChatMessage right) {
+    final leftDate = left.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final rightDate = right.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    return leftDate.compareTo(rightDate);
+  }
 
   @override
   void dispose() {

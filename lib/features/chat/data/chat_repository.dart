@@ -18,6 +18,11 @@ abstract class ChatDataSource {
 
   Future<List<ChatContact>> fetchContacts(String currentUserId);
 
+  Future<ChatContact?> fetchConversationPeer({
+    required String conversationId,
+    required String currentUserId,
+  });
+
   Future<String> startConversation({
     required AuthUser currentUser,
     required ChatContact peer,

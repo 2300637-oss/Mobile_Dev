@@ -10,8 +10,17 @@ import '../../../posts/data/public_post_repository.dart';
 import '../../../posts/data/supabase_public_post_repository.dart';
 import '../../../posts/domain/public_post.dart';
 
-class HomeScreen extends StatelessWidget {
+enum _FeedFilter { forYou, following, artShowcase, openComms }
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  _FeedFilter _selectedFilter = _FeedFilter.forYou;
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +41,14 @@ class HomeScreen extends StatelessWidget {
                 onLogout: authController.isBusy ? null : authController.signOut,
               ),
             ),
-            const SliverToBoxAdapter(child: _FeedTabs()),
+            SliverToBoxAdapter(
+              child: _FeedTabs(
+                selectedFilter: _selectedFilter,
+                onSelected: (filter) {
+                  setState(() => _selectedFilter = filter);
+                },
+              ),
+            ),
             StreamBuilder<List<PublicPost>>(
               stream: repository.watchPosts(),
               builder: (context, snapshot) {
@@ -42,11 +58,12 @@ class HomeScreen extends StatelessWidget {
                   );
                 }
 
-                final posts = snapshot.data ?? const <PublicPost>[];
+                final allPosts = snapshot.data ?? const <PublicPost>[];
+                final posts = _filterPosts(allPosts, user?.id);
                 if (posts.isEmpty) {
-                  return const SliverFillRemaining(
+                  return SliverFillRemaining(
                     hasScrollBody: false,
-                    child: _EmptyFeed(),
+                    child: _EmptyFeed(message: _emptyMessage),
                   );
                 }
 
@@ -76,6 +93,39 @@ class HomeScreen extends StatelessWidget {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
+  }
+
+  List<PublicPost> _filterPosts(List<PublicPost> posts, String? currentUserId) {
+    return switch (_selectedFilter) {
+      _FeedFilter.forYou => posts,
+      _FeedFilter.following =>
+        posts
+            .where(
+              (post) => currentUserId != null && post.authorId != currentUserId,
+            )
+            .toList(growable: false),
+      _FeedFilter.artShowcase =>
+        posts
+            .where((post) => post.type.toLowerCase().contains('artwork'))
+            .toList(growable: false),
+      _FeedFilter.openComms =>
+        posts
+            .where((post) {
+              final type = post.type.toLowerCase();
+              return type.contains('commission') || type.contains('service');
+            })
+            .toList(growable: false),
+    };
+  }
+
+  String get _emptyMessage {
+    return switch (_selectedFilter) {
+      _FeedFilter.forYou =>
+        'Create the first artwork, commission, service, progress, or announcement post.',
+      _FeedFilter.following => 'No followed creator posts yet.',
+      _FeedFilter.artShowcase => 'No artwork showcase posts yet.',
+      _FeedFilter.openComms => 'No open commission or service posts yet.',
+    };
   }
 }
 
@@ -144,7 +194,10 @@ class _FeedHeader extends StatelessWidget {
 }
 
 class _FeedTabs extends StatelessWidget {
-  const _FeedTabs();
+  const _FeedTabs({required this.selectedFilter, required this.onSelected});
+
+  final _FeedFilter selectedFilter;
+  final ValueChanged<_FeedFilter> onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -153,11 +206,27 @@ class _FeedTabs extends StatelessWidget {
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        children: const [
-          _FeedChip(label: 'For You', selected: true),
-          _FeedChip(label: 'Following'),
-          _FeedChip(label: 'Art Showcase'),
-          _FeedChip(label: 'Open Comms'),
+        children: [
+          _FeedChip(
+            label: 'For You',
+            selected: selectedFilter == _FeedFilter.forYou,
+            onPressed: () => onSelected(_FeedFilter.forYou),
+          ),
+          _FeedChip(
+            label: 'Following',
+            selected: selectedFilter == _FeedFilter.following,
+            onPressed: () => onSelected(_FeedFilter.following),
+          ),
+          _FeedChip(
+            label: 'Art Showcase',
+            selected: selectedFilter == _FeedFilter.artShowcase,
+            onPressed: () => onSelected(_FeedFilter.artShowcase),
+          ),
+          _FeedChip(
+            label: 'Open Comms',
+            selected: selectedFilter == _FeedFilter.openComms,
+            onPressed: () => onSelected(_FeedFilter.openComms),
+          ),
         ],
       ),
     );
@@ -165,16 +234,22 @@ class _FeedTabs extends StatelessWidget {
 }
 
 class _FeedChip extends StatelessWidget {
-  const _FeedChip({required this.label, this.selected = false});
+  const _FeedChip({
+    required this.label,
+    required this.onPressed,
+    this.selected = false,
+  });
 
   final String label;
+  final VoidCallback onPressed;
   final bool selected;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: Chip(
+      child: ActionChip(
+        onPressed: onPressed,
         label: Text(label),
         backgroundColor: selected
             ? AppColors.schoolBusYellow
@@ -871,7 +946,9 @@ class _PostViewersSheet extends StatelessWidget {
 }
 
 class _EmptyFeed extends StatelessWidget {
-  const _EmptyFeed();
+  const _EmptyFeed({required this.message});
+
+  final String message;
 
   @override
   Widget build(BuildContext context) {
@@ -892,10 +969,7 @@ class _EmptyFeed extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Create the first artwork, commission, service, progress, or announcement post.',
-              textAlign: TextAlign.center,
-            ),
+            Text(message, textAlign: TextAlign.center),
           ],
         ),
       ),
