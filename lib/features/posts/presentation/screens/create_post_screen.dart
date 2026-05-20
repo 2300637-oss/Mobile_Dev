@@ -135,7 +135,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Comments are disabled in LNU Skills Commission. Users can only react, view, and share public posts.',
+                'Comments are disabled in LNU Student Skills Commission. Users can only react, view, and share public posts.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.black54),
               ),

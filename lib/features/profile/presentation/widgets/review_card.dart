@@ -9,12 +9,14 @@ class ReviewsSection extends StatelessWidget {
     required this.profile,
     required this.reviews,
     required this.ratingDistribution,
+    this.onAddReview,
     required this.isOwner,
   });
 
   final StudentProfile profile;
   final List<ProfileReview> reviews;
   final List<RatingDistribution> ratingDistribution;
+  final VoidCallback? onAddReview;
   final bool isOwner;
 
   @override
@@ -29,6 +31,18 @@ class ReviewsSection extends StatelessWidget {
             profile: profile,
             ratingDistribution: ratingDistribution,
           ),
+          if (onAddReview != null) ...[
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: onAddReview,
+              style: FilledButton.styleFrom(
+                backgroundColor: SkillHubProfileColors.navy,
+                foregroundColor: SkillHubProfileColors.white,
+              ),
+              icon: const Icon(Icons.rate_review_outlined, size: 17),
+              label: const Text('Write a Review'),
+            ),
+          ],
           const SizedBox(height: 12),
           const _ReviewRuleNotice(),
           if (isOwner) ...[
@@ -36,10 +50,13 @@ class ReviewsSection extends StatelessWidget {
             const _OwnerReviewNotice(),
           ],
           const SizedBox(height: 12),
-          for (final review in reviews) ...[
-            ReviewCard(review: review),
-            if (review != reviews.last) const SizedBox(height: 10),
-          ],
+          if (reviews.isEmpty)
+            const _EmptyReviews()
+          else
+            for (final review in reviews) ...[
+              ReviewCard(review: review),
+              if (review != reviews.last) const SizedBox(height: 10),
+            ],
         ],
       ),
     );

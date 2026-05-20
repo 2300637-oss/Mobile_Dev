@@ -18,6 +18,20 @@ class EditProfileSheet extends StatefulWidget {
 }
 
 class _EditProfileSheetState extends State<EditProfileSheet> {
+  static const _yearLevels = [
+    '1st',
+    '2nd',
+    '3rd',
+    '4th',
+    '5th',
+    '1st Year',
+    '2nd Year',
+    '3rd Year',
+    '4th Year',
+    '5th Year',
+    'Student',
+  ];
+
   late final TextEditingController _nameController;
   late final TextEditingController _bioController;
   late final TextEditingController _collegeController;
@@ -26,6 +40,7 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
   late String _yearLevel;
   late AvailabilityStatus _availability;
   late VisibilityType _visibility;
+  late final List<String> _safeYearLevels;
 
   @override
   void initState() {
@@ -39,7 +54,14 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
     _skillsController = TextEditingController(
       text: widget.profile.skills.join(', '),
     );
-    _yearLevel = widget.profile.yearLevel;
+    final incomingYear = widget.profile.yearLevel.trim();
+    _safeYearLevels = {
+      ..._yearLevels,
+      if (incomingYear.isNotEmpty) incomingYear,
+    }.toList(growable: false);
+    _yearLevel = _safeYearLevels.contains(incomingYear)
+        ? incomingYear
+        : 'Student';
     _availability = widget.profile.availability;
     _visibility = widget.profile.visibility;
   }
@@ -134,20 +156,12 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
               DropdownButtonFormField<String>(
                 initialValue: _yearLevel,
                 decoration: const InputDecoration(labelText: 'Year level'),
-                items:
-                    const [
-                          '1st Year',
-                          '2nd Year',
-                          '3rd Year',
-                          '4th Year',
-                          '5th Year',
-                          'Student',
-                        ]
-                        .map(
-                          (year) =>
-                              DropdownMenuItem(value: year, child: Text(year)),
-                        )
-                        .toList(),
+                items: _safeYearLevels
+                    .map(
+                      (year) =>
+                          DropdownMenuItem(value: year, child: Text(year)),
+                    )
+                    .toList(),
                 onChanged: (value) {
                   if (value != null) {
                     setState(() => _yearLevel = value);

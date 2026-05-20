@@ -12,52 +12,38 @@ abstract class StudentProfileRepository {
     required VisibilityType visibility,
   });
 
-  Future<ProfilePost> updatePost(ProfilePost post);
+  Future<void> deletePost({required String profileId, required String postId});
 
-  Future<void> deletePost(ProfilePost post);
-
-  Future<ProfilePost> updatePostVisibility({
-    required ProfilePost post,
-    required VisibilityType visibility,
+  Future<String> uploadProfileFile({
+    required String userId,
+    required String path,
+    required String fileName,
+    required String bucket,
+    String? contentType,
   });
 
-  Future<ProfilePost> pinPost({
-    required ProfilePost post,
-    required bool pinned,
+  Future<PortfolioItem> createPortfolioItem({
+    required String profileId,
+    required String title,
+    required String description,
   });
 
-  Future<void> savePost({required String postId, required String userId});
-
-  Future<void> unsavePost({required String postId, required String userId});
-
-  Future<void> reportPost({required String postId, required String reporterId});
-
-  Future<ProfileService> createService(ProfileService service);
-
-  Future<ProfileService> updateService(ProfileService service);
-
-  Future<void> deleteService(ProfileService service);
-
-  Future<StudentProfile> updateCv({
-    required StudentProfile profile,
-    required String cvUrl,
+  Future<ProfileService> createService({
+    required String profileId,
+    required String title,
+    required String description,
+    required String category,
+    required String priceRange,
+    required String deliveryTime,
+    required AvailabilityStatus availability,
   });
-
-  Future<PortfolioItem> createPortfolioItem(PortfolioItem item);
-
-  Future<PortfolioItem> updatePortfolioItem(PortfolioItem item);
-
-  Future<void> deletePortfolioItem(PortfolioItem item);
 
   Future<ProfileReview> createReview({
-    required ProfileReview review,
-    required String profileOwnerId,
-    required bool completedCommission,
-  });
-
-  Future<void> requestCommission({
-    required ProfileService service,
-    required String requesterId,
-    required String profileOwnerId,
+    required String profileId,
+    required String reviewerId,
+    required String reviewerName,
+    required String serviceTitle,
+    required int rating,
+    required String comment,
   });
 }

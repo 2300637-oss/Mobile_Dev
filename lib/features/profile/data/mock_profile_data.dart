@@ -57,157 +57,113 @@ class MockProfileRepository implements StudentProfileRepository {
   }
 
   @override
-  Future<ProfilePost> updatePost(ProfilePost post) async {
-    _bundle = _bundle.copyWith(
-      posts: _bundle.posts
-          .map((existing) => existing.id == post.id ? post : existing)
-          .toList(growable: false),
+  Future<PortfolioItem> createPortfolioItem({
+    required String profileId,
+    required String title,
+    required String description,
+  }) async {
+    final item = PortfolioItem(
+      id: 'local-portfolio-${DateTime.now().microsecondsSinceEpoch}',
+      profileId: profileId,
+      title: title,
+      description: description,
+      fileUrl: '',
+      externalUrl: '',
+      itemType: 'project',
+      createdAt: DateTime.now(),
     );
-    return post;
-  }
-
-  @override
-  Future<void> deletePost(ProfilePost post) async {
     _bundle = _bundle.copyWith(
-      posts: _bundle.posts
-          .where((existing) => existing.id != post.id)
-          .toList(growable: false),
-    );
-  }
-
-  @override
-  Future<ProfilePost> updatePostVisibility({
-    required ProfilePost post,
-    required VisibilityType visibility,
-  }) {
-    return updatePost(post.copyWith(visibility: visibility));
-  }
-
-  @override
-  Future<ProfilePost> pinPost({
-    required ProfilePost post,
-    required bool pinned,
-  }) {
-    return updatePost(post.copyWith(isPinned: pinned));
-  }
-
-  @override
-  Future<void> savePost({
-    required String postId,
-    required String userId,
-  }) async {}
-
-  @override
-  Future<void> unsavePost({
-    required String postId,
-    required String userId,
-  }) async {}
-
-  @override
-  Future<void> reportPost({
-    required String postId,
-    required String reporterId,
-  }) async {}
-
-  @override
-  Future<ProfileService> createService(ProfileService service) async {
-    final created = service.id.isEmpty
-        ? service.copyWith(
-            id: 'local-service-${DateTime.now().microsecondsSinceEpoch}',
-          )
-        : service;
-    _bundle = _bundle.copyWith(services: [created, ..._bundle.services]);
-    return created;
-  }
-
-  @override
-  Future<ProfileService> updateService(ProfileService service) async {
-    _bundle = _bundle.copyWith(
-      services: _bundle.services
-          .map((existing) => existing.id == service.id ? service : existing)
-          .toList(growable: false),
-    );
-    return service;
-  }
-
-  @override
-  Future<void> deleteService(ProfileService service) async {
-    _bundle = _bundle.copyWith(
-      services: _bundle.services
-          .where((existing) => existing.id != service.id)
-          .toList(growable: false),
-    );
-  }
-
-  @override
-  Future<StudentProfile> updateCv({
-    required StudentProfile profile,
-    required String cvUrl,
-  }) {
-    return updateProfile(profile.copyWith(cvUrl: cvUrl));
-  }
-
-  @override
-  Future<PortfolioItem> createPortfolioItem(PortfolioItem item) async {
-    final created = item.id.isEmpty
-        ? item.copyWith(
-            id: 'local-portfolio-${DateTime.now().microsecondsSinceEpoch}',
-          )
-        : item;
-    _bundle = _bundle.copyWith(
-      portfolioItems: [created, ..._bundle.portfolioItems],
-    );
-    return created;
-  }
-
-  @override
-  Future<PortfolioItem> updatePortfolioItem(PortfolioItem item) async {
-    _bundle = _bundle.copyWith(
-      portfolioItems: _bundle.portfolioItems
-          .map((existing) => existing.id == item.id ? item : existing)
-          .toList(growable: false),
+      portfolioItems: [item, ..._bundle.portfolioItems],
     );
     return item;
   }
 
   @override
-  Future<void> deletePortfolioItem(PortfolioItem item) async {
-    _bundle = _bundle.copyWith(
-      portfolioItems: _bundle.portfolioItems
-          .where((existing) => existing.id != item.id)
-          .toList(growable: false),
+  Future<ProfileService> createService({
+    required String profileId,
+    required String title,
+    required String description,
+    required String category,
+    required String priceRange,
+    required String deliveryTime,
+    required AvailabilityStatus availability,
+  }) async {
+    final service = ProfileService(
+      id: 'local-service-${DateTime.now().microsecondsSinceEpoch}',
+      profileId: profileId,
+      title: title,
+      description: description,
+      category: category,
+      priceRange: priceRange,
+      deliveryTime: deliveryTime,
+      availability: availability,
+      createdAt: DateTime.now(),
     );
+    _bundle = _bundle.copyWith(services: [service, ..._bundle.services]);
+    return service;
   }
 
   @override
   Future<ProfileReview> createReview({
-    required ProfileReview review,
-    required String profileOwnerId,
-    required bool completedCommission,
+    required String profileId,
+    required String reviewerId,
+    required String reviewerName,
+    required String serviceTitle,
+    required int rating,
+    required String comment,
   }) async {
-    if (review.reviewerId == profileOwnerId) {
-      throw const ProfileActionBlocked('You cannot review your own profile.');
-    }
-    if (!completedCommission) {
-      throw const ProfileActionBlocked(
-        'Reviews require a completed commission.',
-      );
-    }
+    final review = ProfileReview(
+      id: 'local-review-${DateTime.now().microsecondsSinceEpoch}',
+      profileId: profileId,
+      reviewerId: reviewerId,
+      reviewerName: reviewerName,
+      reviewerInitials: _initialsForName(reviewerName),
+      serviceTitle: serviceTitle,
+      rating: rating.clamp(1, 5),
+      comment: comment,
+      createdAt: DateTime.now(),
+    );
     _bundle = _bundle.copyWith(reviews: [review, ..._bundle.reviews]);
     return review;
   }
 
   @override
-  Future<void> requestCommission({
-    required ProfileService service,
-    required String requesterId,
-    required String profileOwnerId,
+  Future<void> deletePost({
+    required String profileId,
+    required String postId,
   }) async {
-    if (requesterId == profileOwnerId) {
-      throw const ProfileActionBlocked(
-        'You cannot request a commission from yourself.',
-      );
+    _bundle = _bundle.copyWith(
+      posts: _bundle.posts.where((post) => post.id != postId).toList(),
+      profile: _bundle.profile.copyWith(
+        stats: _bundle.profile.stats.copyWith(
+          posts: (_bundle.profile.stats.posts - 1).clamp(0, 1 << 31),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Future<String> uploadProfileFile({
+    required String userId,
+    required String path,
+    required String fileName,
+    required String bucket,
+    String? contentType,
+  }) async {
+    return path;
+  }
+
+  String _initialsForName(String name) {
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .toList();
+    if (parts.isEmpty) {
+      return 'LS';
     }
+    return parts.map((part) => part.substring(0, 1).toUpperCase()).join();
   }
 }
 
@@ -241,12 +197,12 @@ final mockStudentProfile = StudentProfile(
   visibility: VisibilityType.lnuPublic,
   avatarUrl: '',
   coverUrl: '',
-  cvUrl: 'Ana_Reyes_CV.pdf',
+  cvUrl: '',
   verified: true,
   email: 'ana.reyes@lnu.edu.ph',
   contactPreference: 'Message on SkillHub',
   joinedLabel: 'August 2023',
-  portfolioLinks: const ['behance.net/ana-draws', 'instagram.com/ana.draws'],
+  portfolioLinks: const ['behance.net/ana-draws'],
   stats: const ProfileStats(posts: 12, completed: 47, reviews: 23, rating: 4.8),
 );
 

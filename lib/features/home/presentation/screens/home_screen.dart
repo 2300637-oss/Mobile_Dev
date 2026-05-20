@@ -9,6 +9,7 @@ import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../posts/data/public_post_repository.dart';
 import '../../../posts/data/supabase_public_post_repository.dart';
 import '../../../posts/domain/public_post.dart';
+import '../../../profile/data/follow_store.dart';
 
 enum _FeedFilter { forYou, following, artShowcase, openComms }
 
@@ -20,6 +21,16 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  String _selectedFeed = 'For You';
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final userId = context.read<AuthController>().currentUser?.id;
+    if (userId != null && userId.isNotEmpty) {
+      FollowStore.loadForUser(userId);
+    }
+  }
   _FeedFilter _selectedFilter = _FeedFilter.forYou;
 
   @override
@@ -151,20 +162,14 @@ class _FeedHeader extends StatelessWidget {
               const _MiniLnuMark(),
               const SizedBox(width: 10),
               const Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(text: 'LNU '),
-                      TextSpan(
-                        text: 'SKILLHUB',
-                        style: TextStyle(color: AppColors.schoolBusYellow),
-                      ),
-                    ],
-                  ),
+                child: Text(
+                  'LNU Student Skills Commision',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: AppColors.white,
                     fontWeight: FontWeight.w900,
-                    fontSize: 20,
+                    fontSize: 18,
                   ),
                 ),
               ),
@@ -199,6 +204,11 @@ class _FeedTabs extends StatelessWidget {
   final _FeedFilter selectedFilter;
   final ValueChanged<_FeedFilter> onSelected;
 
+  @override
+  State<_FeedTabs> createState() => _FeedTabsState();
+}
+
+class _FeedTabsState extends State<_FeedTabs> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -434,7 +444,7 @@ class _PostAuthor extends StatelessWidget {
             ),
             IconButton(
               tooltip: 'More',
-              onPressed: () {},
+              onPressed: onPressed,
               icon: const Icon(Icons.more_horiz, size: 20),
             ),
           ],
@@ -756,7 +766,7 @@ class _PostStatsState extends State<_PostStats> {
       await SharePlus.instance.share(
         ShareParams(
           text:
-              '${widget.post.authorName} on LNU Skills Commission: ${widget.post.caption}',
+              '${widget.post.authorName} on LNU Student Skills Commission: ${widget.post.caption}',
         ),
       );
     } catch (_) {
@@ -964,8 +974,10 @@ class _EmptyFeed extends StatelessWidget {
               color: Theme.of(context).colorScheme.primary,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'No public posts yet',
+            Text(
+              label == 'For You'
+                  ? 'No public posts yet'
+                  : 'No $label posts yet',
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
             ),
             const SizedBox(height: 6),
@@ -1026,12 +1038,12 @@ class _SkillHubBottomBar extends StatelessWidget {
               icon: Icons.home,
               label: 'Home',
               active: true,
-              onPressed: () {},
+              onPressed: () => context.go('/home'),
             ),
             _BottomItem(
               icon: Icons.search,
               label: 'Search',
-              onPressed: () => context.go('/services'),
+              onPressed: () => context.go('/search'),
             ),
             const SizedBox(width: 48),
             _BottomItem(

@@ -35,55 +35,48 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       appBar: AppBar(
         leading: IconButton(
           tooltip: 'Back',
-          onPressed: () => context.go('/home'),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
           icon: const Icon(Icons.arrow_back),
         ),
         title: const Text('Notifications'),
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: _refresh,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
       ),
       body: SafeArea(
-        child: FutureBuilder<List<_NotificationItem>>(
-          future: _notificationsFuture,
+        child: FutureBuilder<List<_LiveNotification>>(
+          future: _loadNotifications(userId),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return _NotificationMessage(
-                icon: Icons.notifications_off_outlined,
-                title: 'Unable to load notifications',
-                message: 'Please try again in a moment.',
-                onRetry: _refresh,
-              );
-            }
-
-            final items = snapshot.data ?? const <_NotificationItem>[];
-            if (items.isEmpty) {
-              return const _NotificationMessage(
-                icon: Icons.notifications_none_outlined,
-                title: 'No notifications yet',
-                message: 'New messages and post hearts will appear here.',
-              );
-            }
-
+            final liveItems = snapshot.data ?? const <_LiveNotification>[];
             return RefreshIndicator(
-              onRefresh: () async => _refresh(),
-              child: ListView.separated(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(14),
-                itemCount: items.length,
-                separatorBuilder: (context, index) =>
+              onRefresh: () async {
+                await _loadNotifications(userId);
+              },
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  if (liveItems.isNotEmpty) ...[
+                    const _SectionLabel('Recent alerts'),
+                    for (final item in liveItems) ...[
+                      _LiveNotificationTile(item: item),
+                      const SizedBox(height: 10),
+                    ],
+                    const SizedBox(height: 12),
+                  ],
+                  const _SectionLabel('Notification types'),
+                  for (final item in _items) ...[
+                    _NotificationTile(
+                      item: item,
+                      notifications: liveItems
+                          .where((live) => live.type == item.type)
+                          .toList(growable: false),
+                    ),
                     const SizedBox(height: 10),
-                itemBuilder: (context, index) {
-                  final item = items[index];
-                  return _NotificationTile(item: item);
-                },
+                  ],
+                ],
               ),
             );
           },
@@ -92,184 +85,186 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  void _refresh() {
-    setState(() {
-      _notificationsFuture = _loadNotifications();
-    });
-  }
+  Future<List<_LiveNotification>> _loadNotifications(String userId) async {
+    if (userId.isEmpty) {
+      return const <_LiveNotification>[];
+    }
 
-  Future<List<_NotificationItem>> _loadNotifications() async {
-    final results = await Future.wait([
-      _loadChatNotifications(),
-      _loadHeartNotifications(),
-    ]);
-    final items = [...results[0], ...results[1]];
-    items.sort((a, b) {
+    final client = Supabase.instance.client;
+    final notifications = <_LiveNotification>[];
+    try {
+      final chatRows = await client
+          .from('chat_notifications')
+          .select('title, body, created_at')
+          .eq('user_id', userId)
+          .order('created_at', ascending: false)
+          .limit(20);
+      notifications.addAll(
+        chatRows.map(
+          (row) => _LiveNotification(
+            type: 'message',
+            icon: Icons.mark_chat_unread_outlined,
+            title: row['title'] as String? ?? 'New message',
+            message: row['body'] as String? ?? '',
+            createdAt: _dateFromValue(row['created_at']),
+            accent: AppColors.royalAzure,
+          ),
+        ),
+      );
+    } catch (_) {}
+
+    try {
+      final rows = await client
+          .from('app_notifications')
+          .select('type, title, body, created_at')
+          .eq('user_id', userId)
+          .order('created_at', ascending: false)
+          .limit(30);
+      notifications.addAll(rows.map(_notificationFromMap));
+    } catch (_) {}
+
+    final uniqueNotifications = _deduplicateNotifications(notifications);
+    uniqueNotifications.sort((a, b) {
       final left = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
       final right = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
       return right.compareTo(left);
     });
-    return items;
+    return uniqueNotifications;
   }
 
-  Future<List<_NotificationItem>> _loadChatNotifications() async {
-    final rows = await widget.client
-        .from('chat_notifications')
-        .select('id, conversation_id, title, body, created_at')
-        .eq('user_id', widget.currentUser.id)
-        .order('created_at', ascending: false)
-        .limit(30);
-
-    return rows
-        .map<_NotificationItem>((row) {
-          final title = row['title'] as String? ?? 'New message';
-          final body = row['body'] as String? ?? '';
-          return _NotificationItem(
-            id: 'chat-${row['id']}',
-            icon: Icons.chat_bubble_outline,
-            iconColor: AppColors.royalAzure,
-            title: title.isEmpty ? 'New message' : title,
-            message: body.isEmpty ? 'Sent you a message.' : body,
-            createdAt: _dateFromValue(row['created_at']),
-            onTapPath: '/chat/${row['conversation_id']}',
-          );
-        })
-        .toList(growable: false);
-  }
-
-  Future<List<_NotificationItem>> _loadHeartNotifications() async {
-    final posts = await widget.client
-        .from('posts')
-        .select('id, caption')
-        .eq('author_id', widget.currentUser.id);
-    final postIds = posts
-        .map((row) => row['id'] as String? ?? '')
-        .where((id) => id.isNotEmpty)
-        .toList(growable: false);
-    if (postIds.isEmpty) {
-      return const <_NotificationItem>[];
-    }
-
-    final reactions = await widget.client
-        .from('post_reactions')
-        .select('post_id, user_id, created_at')
-        .inFilter('post_id', postIds)
-        .neq('user_id', widget.currentUser.id)
-        .order('created_at', ascending: false)
-        .limit(30);
-    if (reactions.isEmpty) {
-      return const <_NotificationItem>[];
-    }
-
-    final userIds = reactions
-        .map((row) => row['user_id'] as String? ?? '')
-        .where((id) => id.isNotEmpty)
-        .toSet()
-        .toList(growable: false);
-    final profiles = userIds.isEmpty
-        ? const <Map<String, dynamic>>[]
-        : await widget.client
-              .from('profiles')
-              .select('uid, full_name, username')
-              .inFilter('uid', userIds);
-    final profilesById = {
-      for (final profile in profiles) profile['uid'] as String: profile,
+  _LiveNotification _notificationFromMap(Map<String, dynamic> row) {
+    final type = row['type'] as String? ?? '';
+    final icon = switch (type) {
+      'heart' => Icons.favorite_border,
+      'share' => Icons.share_outlined,
+      'commission' => Icons.assignment_turned_in_outlined,
+      'service_inquiry' => Icons.design_services_outlined,
+      _ => Icons.notifications_outlined,
     };
-    final postsById = {for (final post in posts) post['id'] as String: post};
-
-    return reactions
-        .map<_NotificationItem>((row) {
-          final userId = row['user_id'] as String? ?? '';
-          final profile = profilesById[userId] ?? const <String, dynamic>{};
-          final post = postsById[row['post_id']] ?? const <String, dynamic>{};
-          final name = _displayName(profile);
-          final caption = (post['caption'] as String? ?? '').trim();
-          return _NotificationItem(
-            id: 'heart-${row['post_id']}-$userId',
-            icon: Icons.favorite,
-            iconColor: AppColors.cinnabar,
-            title: '$name liked your post',
-            message: caption.isEmpty
-                ? 'Your post received a new heart.'
-                : caption,
-            createdAt: _dateFromValue(row['created_at']),
-            onTapPath: '/home',
-          );
-        })
-        .toList(growable: false);
-  }
-
-  String _displayName(Map<String, dynamic> profile) {
-    final username = profile['username'] as String? ?? '';
-    final fullName = profile['full_name'] as String? ?? '';
-    if (username.isNotEmpty) {
-      return username;
-    }
-    if (fullName.isNotEmpty) {
-      return fullName;
-    }
-    return 'Someone';
+    final accent = switch (type) {
+      'heart' => AppColors.cinnabar,
+      'share' => AppColors.regalNavy,
+      'commission' => AppColors.radioactiveGrass,
+      'service_inquiry' => AppColors.gold,
+      _ => AppColors.royalAzure,
+    };
+    return _LiveNotification(
+      type: type,
+      icon: icon,
+      title: row['title'] as String? ?? 'Notification',
+      message: row['body'] as String? ?? '',
+      createdAt: _dateFromValue(row['created_at']),
+      accent: accent,
+    );
   }
 }
 
-class _NotificationTile extends StatelessWidget {
-  const _NotificationTile({required this.item});
+List<_LiveNotification> _deduplicateNotifications(
+  List<_LiveNotification> notifications,
+) {
+  final seen = <String>{};
+  final unique = <_LiveNotification>[];
+  for (final notification in notifications) {
+    final key = [
+      notification.type,
+      notification.title.trim().toLowerCase(),
+      notification.message.trim().toLowerCase(),
+    ].join('|');
+    if (seen.add(key)) {
+      unique.add(notification);
+    }
+  }
+  return unique;
+}
 
-  final _NotificationItem item;
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.label);
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.white,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: item.onTapPath == null
-            ? null
-            : () => context.go(item.onTapPath!),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10, left: 2),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.black54,
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+          letterSpacing: .2,
+        ),
+      ),
+    );
+  }
+}
+
+class _LiveNotificationTile extends StatelessWidget {
+  const _LiveNotificationTile({required this.item});
+
+  final _LiveNotification item;
+
+  @override
+  Widget build(BuildContext context) {
+    return _NotificationSurface(
+      icon: item.icon,
+      title: item.title,
+      message: item.message,
+      accent: item.accent,
+      trailing: Text(
+        _relativeTime(item.createdAt),
+        style: const TextStyle(color: Colors.black45, fontSize: 11),
+      ),
+      onTap: () => _showDetails(context),
+    );
+  }
+
+  void _showDetails(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.fromLTRB(18, 0, 18, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              CircleAvatar(
-                backgroundColor: item.iconColor.withValues(alpha: .12),
-                foregroundColor: item.iconColor,
-                child: Icon(item.icon, size: 20),
+              Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: item.accent.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(item.icon, color: item.accent),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      item.title,
+                      style: const TextStyle(
+                        color: AppColors.inkBlack,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    _relativeTime(item.createdAt),
+                    style: const TextStyle(color: Colors.black45),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            item.title,
-                            style: const TextStyle(
-                              color: AppColors.inkBlack,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          _relativeTime(item.createdAt),
-                          style: const TextStyle(
-                            color: Colors.black45,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      item.message,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.black54),
-                    ),
-                  ],
+              const SizedBox(height: 14),
+              Text(
+                item.message.isEmpty ? 'No details available.' : item.message,
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontSize: 14,
+                  height: 1.35,
                 ),
               ),
             ],
@@ -278,88 +273,218 @@ class _NotificationTile extends StatelessWidget {
       ),
     );
   }
-
-  String _relativeTime(DateTime? value) {
-    if (value == null) {
-      return '';
-    }
-    final diff = DateTime.now().difference(value);
-    if (diff.inMinutes < 1) {
-      return 'now';
-    }
-    if (diff.inHours < 1) {
-      return '${diff.inMinutes}m';
-    }
-    if (diff.inDays < 1) {
-      return '${diff.inHours}h';
-    }
-    return '${diff.inDays}d';
-  }
 }
 
-class _NotificationMessage extends StatelessWidget {
-  const _NotificationMessage({
-    required this.icon,
-    required this.title,
-    required this.message,
-    this.onRetry,
-  });
+class _NotificationTile extends StatelessWidget {
+  const _NotificationTile({required this.item, required this.notifications});
 
-  final IconData icon;
-  final String title;
-  final String message;
-  final VoidCallback? onRetry;
+  final _NotificationItem item;
+  final List<_LiveNotification> notifications;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: AppColors.midnightBlue, size: 54),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 6),
-            Text(message, textAlign: TextAlign.center),
-            if (onRetry != null) ...[
-              const SizedBox(height: 14),
-              FilledButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
+    return Material(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => _showCategory(context),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: _NotificationContent(
+            icon: item.icon,
+            title: item.title,
+            message: item.message,
+            accent: item.accent,
+            trailing: const Icon(Icons.chevron_right, color: Colors.black38),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCategory(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                item.title,
+                style: const TextStyle(
+                  color: AppColors.inkBlack,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
+              const SizedBox(height: 10),
+              if (notifications.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 28),
+                  child: Text(
+                    'No ${item.title.toLowerCase()} yet.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: notifications.length,
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final notification = notifications[index];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(notification.icon, color: item.accent),
+                        title: Text(notification.title),
+                        subtitle: Text(notification.message),
+                        trailing: Text(_relativeTime(notification.createdAt)),
+                      );
+                    },
+                  ),
+                ),
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _NotificationItem {
-  const _NotificationItem({
-    required this.id,
+class _NotificationSurface extends StatelessWidget {
+  const _NotificationSurface({
     required this.icon,
-    required this.iconColor,
+    required this.title,
+    required this.message,
+    required this.accent,
+    required this.trailing,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final Color accent;
+  final Widget trailing;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: _NotificationContent(
+            icon: icon,
+            title: title,
+            message: message,
+            accent: accent,
+            trailing: trailing,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationContent extends StatelessWidget {
+  const _NotificationContent({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.accent,
+    required this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final Color accent;
+  final Widget trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: accent),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.inkBlack,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                message,
+                style: const TextStyle(color: Colors.black54, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        trailing,
+      ],
+    );
+  }
+}
+
+class _LiveNotification {
+  const _LiveNotification({
+    required this.type,
+    required this.icon,
     required this.title,
     required this.message,
     required this.createdAt,
-    required this.onTapPath,
+    required this.accent,
   });
 
-  final String id;
+  final String type;
   final IconData icon;
-  final Color iconColor;
   final String title;
   final String message;
   final DateTime? createdAt;
-  final String? onTapPath;
+  final Color accent;
+}
+
+class _NotificationItem {
+  const _NotificationItem({
+    required this.type,
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.accent,
+  });
+
+  final String type;
+  final IconData icon;
+  final String title;
+  final String message;
+  final Color accent;
 }
 
 DateTime? _dateFromValue(Object? value) {
@@ -370,4 +495,21 @@ DateTime? _dateFromValue(Object? value) {
     return DateTime.tryParse(value);
   }
   return null;
+}
+
+String _relativeTime(DateTime? value) {
+  if (value == null) {
+    return '';
+  }
+  final diff = DateTime.now().difference(value);
+  if (diff.inMinutes < 1) {
+    return 'now';
+  }
+  if (diff.inHours < 1) {
+    return '${diff.inMinutes}m';
+  }
+  if (diff.inDays < 1) {
+    return '${diff.inHours}h';
+  }
+  return '${diff.inDays}d';
 }

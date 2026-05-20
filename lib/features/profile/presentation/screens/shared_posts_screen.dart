@@ -25,7 +25,7 @@ class SharedPostsScreen extends StatelessWidget {
             if (context.canPop()) {
               context.pop();
             } else {
-              context.go('/profile');
+              context.go('/users/$userId');
             }
           },
           icon: const Icon(Icons.arrow_back),

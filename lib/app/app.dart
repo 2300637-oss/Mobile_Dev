@@ -8,6 +8,7 @@ import '../features/admin/admin_dashboard_page.dart';
 import '../features/admin/admin_guard.dart';
 import '../features/auth/domain/auth_repository.dart';
 import '../features/auth/presentation/controllers/auth_controller.dart';
+import '../features/auth/presentation/screens/auth_callback_screen.dart';
 import '../features/auth/presentation/screens/email_verification_screen.dart';
 import '../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
@@ -20,18 +21,19 @@ import '../features/chat/presentation/controllers/chat_list_controller.dart';
 import '../features/chat/presentation/controllers/chat_thread_controller.dart';
 import '../features/chat/presentation/screens/chat_screen.dart';
 import '../features/chat/presentation/screens/chat_thread_screen.dart';
+import '../features/commissions/presentation/screens/commission_requests_screen.dart';
 import '../features/home/presentation/screens/home_screen.dart';
 import '../features/notifications/presentation/screens/notifications_screen.dart';
 import '../features/posts/data/supabase_public_post_repository.dart';
 import '../features/posts/presentation/controllers/create_post_controller.dart';
 import '../features/posts/presentation/screens/create_post_screen.dart';
 import '../features/profile/data/supabase_profile_repository.dart';
-import '../features/profile/data/mock_profile_data.dart';
 import '../features/profile/data/supabase_student_profile_repository.dart';
 import '../features/profile/presentation/controllers/profile_controller.dart';
 import '../features/profile/presentation/student_profile_page.dart';
 import '../features/profile/presentation/screens/public_profile_screen.dart';
 import '../features/profile/presentation/screens/shared_posts_screen.dart';
+import '../features/search/presentation/screens/search_screen.dart';
 import '../features/shared/presentation/screens/module_placeholder_screen.dart';
 
 class CommissionApp extends StatefulWidget {
@@ -77,7 +79,7 @@ class _CommissionAppState extends State<CommissionApp> {
     return ChangeNotifierProvider.value(
       value: _authController,
       child: MaterialApp.router(
-        title: 'LNU Skills Commission',
+        title: 'LNU Student Skills Commission',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
@@ -121,9 +123,15 @@ GoRouter _buildRouter(AuthController authController) {
           !requiresEmailVerification || (user?.emailVerified ?? false);
       final location = state.matchedLocation;
       final isAdminRoute = location.startsWith('/admin/');
-      final isEmailCallback =
+      final hasAuthCode =
           state.uri.queryParameters.containsKey('code') ||
-          state.uri.fragment.contains('access_token');
+          state.uri.fragment.contains('access_token') ||
+          state.uri.fragment.contains('code=');
+      final hasAuthError =
+          state.uri.queryParameters.containsKey('error_code') ||
+          state.uri.fragment.contains('error_code=');
+      final isEmailCallback =
+          location == '/auth/callback' || hasAuthError || hasAuthCode;
       final isAuthRoute =
           location == '/login' ||
           location == '/register' ||
@@ -135,11 +143,19 @@ GoRouter _buildRouter(AuthController authController) {
         return null;
       }
 
+      if ((hasAuthCode || hasAuthError) && location != '/auth/callback') {
+        final query = state.uri.query.isEmpty ? '' : '?${state.uri.query}';
+        return '/auth/callback$query';
+      }
+
       if (isInitializing) {
         return (location == '/splash' || isEmailCallback) ? null : '/splash';
       }
 
-      if (isEmailCallback && isSignedIn && isEmailVerified) {
+      if (isEmailCallback &&
+          location != '/auth/callback' &&
+          isSignedIn &&
+          isEmailVerified) {
         return '/registration-complete';
       }
 
@@ -172,6 +188,10 @@ GoRouter _buildRouter(AuthController authController) {
         builder: (context, state) => const SplashScreen(),
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/auth/callback',
+        builder: (context, state) => AuthCallbackScreen(uri: state.uri),
+      ),
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
@@ -315,6 +335,10 @@ GoRouter _buildRouter(AuthController authController) {
         },
       ),
       GoRoute(
+        path: '/search',
+        builder: (context, state) => const SearchScreen(),
+      ),
+      GoRoute(
         path: '/services',
         builder: (context, state) => const ModulePlaceholderScreen(
           title: 'Services',
@@ -339,12 +363,13 @@ GoRouter _buildRouter(AuthController authController) {
       ),
       GoRoute(
         path: '/commission-requests',
-        builder: (context, state) => const ModulePlaceholderScreen(
-          title: 'Commission Requests',
-          icon: Icons.assignment_outlined,
-          message:
-              'Requests, statuses, progress, and deadlines will be tracked here.',
-        ),
+        builder: (context, state) {
+          final user = authController.currentUser;
+          if (user == null) {
+            return const SplashScreen();
+          }
+          return CommissionRequestsScreen(currentUser: user);
+        },
       ),
     ],
   );

@@ -68,12 +68,24 @@ class AuthController extends ChangeNotifier {
       return true;
     }
 
-    return _runAuthAction(
-      () => _authRepository.signInWithEmailAndPassword(
+    isBusy = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      currentUser = await _authRepository.signInWithEmailAndPassword(
         email: email,
         password: password,
-      ),
-    );
+      );
+      return true;
+    } catch (error) {
+      currentUser = null;
+      errorMessage = _messageForError(error);
+      return false;
+    } finally {
+      isBusy = false;
+      notifyListeners();
+    }
   }
 
   Future<bool> register({
@@ -257,6 +269,9 @@ class AuthController extends ChangeNotifier {
       if (error.code == '42501' ||
           message.toLowerCase().contains('row-level security')) {
         return 'Supabase blocked this request with RLS. Check the policies from supabase_schema.sql.';
+      }
+      if (message.toLowerCase().contains('foreign key constraint')) {
+        return 'Your login worked, but Supabase profile sync needs its users/profiles table setup checked.';
       }
       return message.isEmpty
           ? 'Supabase database request failed. Please try again.'

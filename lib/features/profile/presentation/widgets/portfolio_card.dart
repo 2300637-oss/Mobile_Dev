@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/profile_models.dart';
 import 'profile_style.dart';
@@ -40,7 +41,9 @@ class PortfolioSection extends StatelessWidget {
           const _SectionHead(title: 'Curriculum Vitae'),
           const SizedBox(height: 10),
           _CvCard(
-            cvName: profile.cvUrl.isEmpty ? 'Ana_Reyes_CV.pdf' : profile.cvUrl,
+            cvName: profile.cvUrl.isEmpty
+                ? 'No CV uploaded yet'
+                : profile.cvUrl,
             onView: onViewCv,
             onDownload: onDownloadCv,
             onEdit: onEditCv,
@@ -258,6 +261,7 @@ class _CvCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasCv = cvName != 'No CV uploaded yet';
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
@@ -265,57 +269,89 @@ class _CvCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: SkillHubProfileColors.border, width: 1.5),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF7ED),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.description_outlined,
-              color: Color(0xFFC2410C),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 360;
+          final fileInfo = Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.description_outlined,
+                  color: Color(0xFFC2410C),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      cvName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      hasCv
+                          ? 'Stored in Supabase'
+                          : 'Upload a PDF, DOC, or DOCX file',
+                      style: const TextStyle(
+                        color: SkillHubProfileColors.textSub,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+          final actions = Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            alignment: compact ? WrapAlignment.start : WrapAlignment.end,
+            children: [
+              if (!hasCv)
+                TextButton.icon(
+                  onPressed: onUpload,
+                  icon: const Icon(Icons.upload_file_outlined, size: 15),
+                  label: const Text('Upload'),
+                )
+              else
+                TextButton.icon(
+                  onPressed: onView,
+                  icon: const Icon(Icons.visibility_outlined, size: 15),
+                  label: const Text('View CV'),
+                ),
+              IconButton(
+                tooltip: 'Download CV',
+                onPressed: hasCv ? onDownload : onUpload,
+                icon: const Icon(Icons.download_outlined),
+              ),
+            ],
+          );
+
+          if (compact) {
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  cvName,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Last updated May 2026 - PDF - 1.2 MB',
-                  style: TextStyle(
-                    color: SkillHubProfileColors.textSub,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton.icon(
-            onPressed: onView,
-            icon: const Icon(Icons.visibility_outlined, size: 15),
-            label: const Text('View CV'),
-          ),
-          IconButton(
-            tooltip: 'Download CV',
-            onPressed: onDownload,
-            icon: const Icon(Icons.download_outlined),
-          ),
-          if (isOwner)
-            IconButton(
-              tooltip: 'Edit CV',
-              onPressed: onEdit,
-              icon: const Icon(Icons.edit_outlined),
-            ),
-        ],
+              children: [fileInfo, const SizedBox(height: 8), actions],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: fileInfo),
+              const SizedBox(width: 8),
+              actions,
+            ],
+          );
+        },
       ),
     );
   }
@@ -352,9 +388,10 @@ class _LinkChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
+    return ActionChip(
       avatar: const Icon(Icons.open_in_new, size: 14),
       label: Text(label),
+      onPressed: () => _openLink(context),
       labelStyle: const TextStyle(
         color: SkillHubProfileColors.blueAccent,
         fontSize: 12,
@@ -365,6 +402,23 @@ class _LinkChip extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );
   }
+
+  Future<void> _openLink(BuildContext context) async {
+    final uri = Uri.tryParse(
+      label.startsWith('http://') || label.startsWith('https://')
+          ? label
+          : 'https://$label',
+    );
+    if (uri == null ||
+        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('Could not open link.')));
+    }
+  }
 }
 
 class _AddProjectCard extends StatelessWidget {
@@ -374,31 +428,34 @@ class _AddProjectCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return Material(
+      color: const Color(0xFFFAFBFD),
       borderRadius: BorderRadius.circular(10),
-      onTap: onPressed,
-      child: Container(
-        height: 160,
-        decoration: BoxDecoration(
-          color: const Color(0xFFFAFBFD),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: SkillHubProfileColors.border,
-            width: 2,
-            strokeAlign: BorderSide.strokeAlignInside,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onPressed,
+        child: Container(
+          height: 160,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: SkillHubProfileColors.border,
+              width: 2,
+              strokeAlign: BorderSide.strokeAlignInside,
+            ),
           ),
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.add_circle_outline, color: Color(0xFF94A3B8)),
-              SizedBox(height: 5),
-              Text(
-                'Add Project',
-                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
-              ),
-            ],
+          child: const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add_circle_outline, color: Color(0xFF94A3B8)),
+                SizedBox(height: 5),
+                Text(
+                  'Add Project',
+                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                ),
+              ],
+            ),
           ),
         ),
       ),

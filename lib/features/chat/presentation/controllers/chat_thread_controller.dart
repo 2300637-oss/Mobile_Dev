@@ -69,6 +69,7 @@ class ChatThreadController extends ChangeNotifier {
       );
       notifyListeners();
     } catch (_) {
+      peer = null;
       // The chat can still work without peer metadata.
     }
   }

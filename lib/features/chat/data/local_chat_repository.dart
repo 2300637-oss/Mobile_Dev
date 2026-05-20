@@ -89,8 +89,17 @@ class LocalChatRepository implements ChatDataSource {
     required String conversationId,
     required String currentUserId,
   }) async {
-    _seed(currentUserId);
-    return _peersByConversation[conversationId];
+    final peer = _peersByConversation[conversationId];
+    if (peer != null) {
+      return peer;
+    }
+
+    for (final contact in _contacts) {
+      if (conversationId.split('_').contains(contact.id)) {
+        return contact;
+      }
+    }
+    return null;
   }
 
   @override

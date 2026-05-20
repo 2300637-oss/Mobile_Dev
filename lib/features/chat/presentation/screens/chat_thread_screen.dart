@@ -104,8 +104,11 @@ class _ThreadHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = peer?.name.isNotEmpty == true ? peer!.name : 'Direct Message';
-    final detail = peer?.detail.isNotEmpty == true ? peer!.detail : 'Online';
+    final contact = peer;
+    final title = contact?.name.isNotEmpty == true ? contact!.name : 'Chat';
+    final detail = contact?.detail.isNotEmpty == true
+        ? contact!.detail
+        : 'LNU student';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 10, 12, 10),
@@ -121,10 +124,10 @@ class _ThreadHeader extends StatelessWidget {
           CircleAvatar(
             radius: 20,
             backgroundColor: AppColors.schoolBusYellow,
-            backgroundImage: peer?.avatarUrl.isNotEmpty == true
-                ? NetworkImage(peer!.avatarUrl)
+            backgroundImage: contact?.avatarUrl.isNotEmpty == true
+                ? NetworkImage(contact!.avatarUrl)
                 : null,
-            child: peer?.avatarUrl.isNotEmpty == true
+            child: contact?.avatarUrl.isNotEmpty == true
                 ? null
                 : Text(
                     title.characters.first.toUpperCase(),
@@ -165,11 +168,53 @@ class _ThreadHeader extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'More',
-            onPressed: () {},
+            onPressed: () => _showThreadMenu(context, contact),
             icon: const Icon(Icons.more_horiz),
             color: AppColors.white,
           ),
         ],
+      ),
+    );
+  }
+
+  void _showThreadMenu(BuildContext context, ChatContact? contact) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.notifications_outlined),
+                title: const Text('Notifications'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  context.go('/notifications');
+                },
+              ),
+              if (contact != null)
+                ListTile(
+                  leading: const Icon(Icons.person_outline),
+                  title: Text('View ${contact.name}'),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    context.go('/users/${contact.id}');
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.chat_bubble_outline),
+                title: const Text('Back to chats'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  context.go('/chat');
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -399,6 +444,11 @@ class _MessageComposer extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.attach_file),
+          ),
+          IconButton(
+            tooltip: 'Send image',
+            onPressed: isUploading ? null : onAttachImage,
+            icon: const Icon(Icons.image_outlined),
           ),
           Expanded(
             child: TextField(
