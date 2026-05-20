@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app_colors.dart';
+import '../features/admin/admin_dashboard_page.dart';
+import '../features/admin/admin_guard.dart';
 import '../features/auth/domain/auth_repository.dart';
 import '../features/auth/presentation/controllers/auth_controller.dart';
 import '../features/auth/presentation/screens/email_verification_screen.dart';
@@ -116,6 +118,7 @@ GoRouter _buildRouter(AuthController authController) {
       final isEmailVerified =
           !requiresEmailVerification || (user?.emailVerified ?? false);
       final location = state.matchedLocation;
+      final isAdminRoute = location.startsWith('/admin/');
       final isEmailCallback =
           state.uri.queryParameters.containsKey('code') ||
           state.uri.fragment.contains('access_token');
@@ -125,6 +128,10 @@ GoRouter _buildRouter(AuthController authController) {
           location == '/forgot-password';
       final isVerificationRoute = location == '/verify-email';
       final isRegistrationCompleteRoute = location == '/registration-complete';
+
+      if (isAdminRoute) {
+        return null;
+      }
 
       if (isInitializing) {
         return (location == '/splash' || isEmailCallback) ? null : '/splash';
@@ -220,6 +227,11 @@ GoRouter _buildRouter(AuthController authController) {
             child: ChatThreadScreen(conversationId: conversationId),
           );
         },
+      ),
+      GoRoute(
+        path: '/admin/dashboard',
+        builder: (context, state) =>
+            const AdminGuard(child: AdminDashboardPage()),
       ),
       GoRoute(
         path: '/create-post',
