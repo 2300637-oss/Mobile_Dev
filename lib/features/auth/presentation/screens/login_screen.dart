@@ -111,11 +111,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) {
+    final authController = context.read<AuthController>();
+    if (!authController.useStaticLogin && !_formKey.currentState!.validate()) {
       return;
     }
 
-    await context.read<AuthController>().signIn(
+    await authController.signIn(
       email: _emailController.text,
       password: _passwordController.text,
     );
