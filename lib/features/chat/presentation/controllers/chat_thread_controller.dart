@@ -38,14 +38,7 @@ class ChatThreadController extends ChangeNotifier {
         .watchMessages(conversationId: conversationId, currentUserId: _user.id)
         .listen(
           (items) {
-            messages = [...items]
-              ..sort((a, b) {
-                final left =
-                    a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-                final right =
-                    b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-                return left.compareTo(right);
-              });
+            messages = [...items]..sort(_compareMessages);
             isLoading = false;
             errorMessage = null;
             notifyListeners();
@@ -77,6 +70,7 @@ class ChatThreadController extends ChangeNotifier {
       notifyListeners();
     } catch (_) {
       peer = null;
+      // The chat can still work without peer metadata.
     }
   }
 
@@ -209,6 +203,12 @@ class ChatThreadController extends ChangeNotifier {
   }
 
   bool isMine(ChatMessage message) => message.senderId == _user.id;
+
+  int _compareMessages(ChatMessage left, ChatMessage right) {
+    final leftDate = left.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final rightDate = right.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    return leftDate.compareTo(rightDate);
+  }
 
   @override
   void dispose() {

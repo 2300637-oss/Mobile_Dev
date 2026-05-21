@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class PublicPost {
   const PublicPost({
     required this.id,
@@ -33,27 +31,6 @@ class PublicPost {
 
   bool get hasMedia => mediaUrls.isNotEmpty;
   bool get hasVideo => mediaType == 'video';
-
-  factory PublicPost.fromDocument(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data() ?? const <String, dynamic>{};
-    final createdAtValue = data['createdAt'];
-
-    return PublicPost(
-      id: doc.id,
-      authorId: data['authorId'] as String? ?? '',
-      authorName: data['authorName'] as String? ?? 'LNU student',
-      authorEmail: data['authorEmail'] as String? ?? '',
-      authorDepartment: data['authorDepartment'] as String? ?? '',
-      type: data['type'] as String? ?? 'Artwork showcase',
-      caption: data['caption'] as String? ?? '',
-      mediaUrls: List<String>.from(data['mediaUrls'] as List? ?? const []),
-      mediaType: data['mediaType'] as String? ?? 'none',
-      heartCount: data['heartCount'] as int? ?? 0,
-      viewCount: data['viewCount'] as int? ?? 0,
-      shareCount: data['shareCount'] as int? ?? 0,
-      createdAt: createdAtValue is Timestamp ? createdAtValue.toDate() : null,
-    );
-  }
 
   factory PublicPost.fromSupabaseMap(Map<String, dynamic> data) {
     final createdAtValue = data['created_at'];
