@@ -65,9 +65,9 @@ class _EmptyReviews extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFBFD),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: const Color(0xFFFFFFFF)),
       ),
       child: const Text(
         'No reviews yet.',
@@ -91,9 +91,9 @@ class ReviewCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFBFD),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: const Color(0xFFFFFFFF)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -102,7 +102,7 @@ class ReviewCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
-                backgroundColor: const Color(0xFFEEF2FF),
+                backgroundColor: const Color(0xFFFFFFFF),
                 foregroundColor: SkillHubProfileColors.navy,
                 child: Text(
                   review.reviewerInitials,
@@ -140,7 +140,7 @@ class ReviewCard extends StatelessWidget {
                   Text(
                     _formatShortDate(review.createdAt),
                     style: const TextStyle(
-                      color: Color(0xFF94A3B8),
+                      color: Color(0xFF003566),
                       fontSize: 11,
                     ),
                   ),
@@ -152,7 +152,7 @@ class ReviewCard extends StatelessWidget {
           Text(
             review.comment,
             style: const TextStyle(
-              color: Color(0xFF475569),
+              color: Color(0xFF003566),
               fontSize: 13,
               height: 1.55,
             ),
@@ -187,7 +187,7 @@ class StarRow extends StatelessWidget {
           child: Icon(
             filled ? Icons.star : Icons.star_border,
             size: size,
-            color: filled ? color : const Color(0xFFCBD5E1),
+            color: filled ? color : const Color(0xFF003566),
           ),
         );
       }),
@@ -316,9 +316,9 @@ class _ReviewRuleNotice extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F4FF),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFC7D2FE)),
+        border: Border.all(color: const Color(0xFF003566)),
       ),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,

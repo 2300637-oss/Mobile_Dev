@@ -14,12 +14,19 @@ class SupabaseChatRepository implements ChatDataSource {
   final SupabaseClient _client;
 
   @override
-  Stream<List<ConversationSummary>> watchConversations(String currentUserId) {
-    return _client
-        .from('conversation_participants')
-        .stream(primaryKey: ['conversation_id', 'user_id'])
-        .eq('user_id', currentUserId)
-        .asyncMap((rows) => _loadConversationSummaries(currentUserId, rows));
+  Stream<List<ConversationSummary>> watchConversations(
+    String currentUserId,
+  ) async* {
+    Future<List<ConversationSummary>> load() async {
+      final rows = await _client
+          .from('conversation_participants')
+          .select('conversation_id, user_id')
+          .eq('user_id', currentUserId);
+      return _loadConversationSummaries(currentUserId, rows);
+    }
+
+    yield await load();
+    yield* Stream.periodic(const Duration(seconds: 3)).asyncMap((_) => load());
   }
 
   @override
@@ -242,7 +249,10 @@ class SupabaseChatRepository implements ChatDataSource {
         .upload(
           path,
           File(file.path),
-          fileOptions: FileOptions(contentType: file.mimeType, upsert: false),
+          fileOptions: FileOptions(
+            contentType: file.mimeType ?? 'image/jpeg',
+            upsert: true,
+          ),
         );
     return _client.storage.from('chat-attachments').getPublicUrl(path);
   }

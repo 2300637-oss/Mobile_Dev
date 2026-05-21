@@ -56,12 +56,12 @@ class PortfolioSection extends StatelessWidget {
                 avatar: const Icon(Icons.add_link, size: 15),
                 label: const Text('Add Link'),
                 onPressed: onAddLink,
-                backgroundColor: const Color(0xFFF0FDF4),
+                backgroundColor: const Color(0xFFFFFFFF),
                 labelStyle: const TextStyle(
-                  color: Color(0xFF059669),
+                  color: Color(0xFF00E200),
                   fontWeight: FontWeight.w800,
                 ),
-                side: const BorderSide(color: Color(0xFFA7F3D0)),
+                side: const BorderSide(color: Color(0xFF00E200)),
               ),
             ],
           ),
@@ -212,7 +212,7 @@ class _CvCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFBFD),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: SkillHubProfileColors.border, width: 1.5),
       ),
@@ -225,12 +225,12 @@ class _CvCard extends StatelessWidget {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF7ED),
+                  color: const Color(0xFFFFFFFF),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
                   Icons.description_outlined,
-                  color: Color(0xFFC2410C),
+                  color: Color(0xFF003566),
                 ),
               ),
               const SizedBox(width: 12),
@@ -344,8 +344,8 @@ class _LinkChip extends StatelessWidget {
         fontSize: 12,
         fontWeight: FontWeight.w800,
       ),
-      backgroundColor: const Color(0xFFF0F4FF),
-      side: const BorderSide(color: Color(0xFFC7D2FE)),
+      backgroundColor: const Color(0xFFFFFFFF),
+      side: const BorderSide(color: Color(0xFF003566)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );
   }
@@ -376,7 +376,7 @@ class _AddProjectCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFFAFBFD),
+      color: const Color(0xFFFFFFFF),
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
@@ -395,11 +395,11 @@ class _AddProjectCard extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.add_circle_outline, color: Color(0xFF94A3B8)),
+                Icon(Icons.add_circle_outline, color: Color(0xFF003566)),
                 SizedBox(height: 5),
                 Text(
                   'Add Project',
-                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                  style: TextStyle(color: Color(0xFF003566), fontSize: 12),
                 ),
               ],
             ),

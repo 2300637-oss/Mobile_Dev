@@ -168,6 +168,12 @@ class _FeedHeader extends StatelessWidget {
                 ),
               ),
               IconButton(
+                tooltip: 'Commission Requests',
+                onPressed: () => context.go('/commission-requests'),
+                icon: const Icon(Icons.assignment_outlined),
+                color: AppColors.white,
+              ),
+              IconButton(
                 tooltip: 'Notifications',
                 onPressed: () => context.go('/notifications'),
                 icon: const Icon(Icons.notifications_outlined),
@@ -184,7 +190,7 @@ class _FeedHeader extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             email ?? 'LNU student',
-            style: const TextStyle(color: Color(0xFFDDE7FF), fontSize: 12),
+            style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 12),
           ),
         ],
       ),
@@ -250,7 +256,7 @@ class _FeedChip extends StatelessWidget {
         label: Text(label),
         backgroundColor: selected
             ? AppColors.schoolBusYellow
-            : const Color(0xFFE9EEF9),
+            : const Color(0xFFFFFFFF),
         labelStyle: TextStyle(
           color: selected ? AppColors.inkBlack : AppColors.navy,
           fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
@@ -420,14 +426,17 @@ class _PostAuthor extends StatelessWidget {
                     post.authorDepartment.isEmpty
                         ? post.authorEmail
                         : post.authorDepartment,
-                    style: const TextStyle(fontSize: 11, color: Colors.black54),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.regalNavy,
+                    ),
                   ),
                 ],
               ),
             ),
             Text(
               _relativeTime(post.createdAt),
-              style: const TextStyle(fontSize: 11, color: Colors.black45),
+              style: const TextStyle(fontSize: 11, color: AppColors.regalNavy),
             ),
             IconButton(
               tooltip: 'More',
@@ -853,7 +862,7 @@ class _PostViewersSheet extends StatelessWidget {
               post.caption,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.black54, fontSize: 12),
+              style: const TextStyle(color: AppColors.regalNavy, fontSize: 12),
             ),
             const SizedBox(height: 12),
             Flexible(
@@ -908,7 +917,7 @@ class _PostViewersSheet extends StatelessWidget {
                         trailing: Text(
                           _shortViewedTime(viewer.viewedAt),
                           style: const TextStyle(
-                            color: Colors.black45,
+                            color: AppColors.regalNavy,
                             fontSize: 12,
                           ),
                         ),
@@ -1036,11 +1045,7 @@ class _SkillHubBottomBar extends StatelessWidget {
               onPressed: () => context.go('/search'),
             ),
             const SizedBox(width: 48),
-            _BottomItem(
-              icon: Icons.chat_bubble_outline,
-              label: 'Chat',
-              onPressed: () => context.go('/chat'),
-            ),
+            _UnreadChatBottomItem(onPressed: () => context.go('/chat')),
             _BottomItem(
               icon: Icons.person_outline,
               label: 'Profile',
@@ -1059,12 +1064,14 @@ class _BottomItem extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.active = false,
+    this.badgeCount = 0,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
   final bool active;
+  final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
@@ -1076,7 +1083,37 @@ class _BottomItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 21),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(icon, color: color, size: 21),
+                if (badgeCount > 0)
+                  Positioned(
+                    right: -9,
+                    top: -8,
+                    child: Container(
+                      constraints: const BoxConstraints(
+                        minWidth: 17,
+                        minHeight: 17,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: const BoxDecoration(
+                        color: AppColors.cinnabar,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        badgeCount > 99 ? '99+' : '$badgeCount',
+                        style: const TextStyle(
+                          color: AppColors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 2),
             Text(
               label,
@@ -1090,6 +1127,68 @@ class _BottomItem extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _UnreadChatBottomItem extends StatelessWidget {
+  const _UnreadChatBottomItem({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final userId = context.watch<AuthController>().currentUser?.id;
+    if (userId == null || userId.isEmpty) {
+      return _BottomItem(
+        icon: Icons.chat_bubble_outline,
+        label: 'Chat',
+        onPressed: onPressed,
+      );
+    }
+
+    return StreamBuilder<int>(
+      stream: _watchUnreadChatCount(userId),
+      builder: (context, snapshot) {
+        return _BottomItem(
+          icon: Icons.chat_bubble_outline,
+          label: 'Chat',
+          badgeCount: snapshot.data ?? 0,
+          onPressed: onPressed,
+        );
+      },
+    );
+  }
+}
+
+Stream<int> _watchUnreadChatCount(String userId) async* {
+  yield await _loadUnreadChatCount(userId);
+  yield* Stream.periodic(
+    const Duration(seconds: 3),
+  ).asyncMap((_) => _loadUnreadChatCount(userId));
+}
+
+Future<int> _loadUnreadChatCount(String userId) async {
+  try {
+    final participantRows = await Supabase.instance.client
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', userId);
+    final conversationIds = participantRows
+        .map((row) => row['conversation_id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+    if (conversationIds.isEmpty) {
+      return 0;
+    }
+    final unreadRows = await Supabase.instance.client
+        .from('messages')
+        .select('id')
+        .inFilter('conversation_id', conversationIds)
+        .neq('sender_id', userId)
+        .filter('seen_at', 'is', null);
+    return unreadRows.length;
+  } catch (_) {
+    return 0;
   }
 }
 

@@ -137,7 +137,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               const Text(
                 'Comments are disabled in LNU Student Skills Commission. Users can only react, view, and share public posts.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.black54),
+                style: TextStyle(color: AppColors.regalNavy),
               ),
             ],
           ),
@@ -178,9 +178,9 @@ class _MediaPreview extends StatelessWidget {
     if (file == null) {
       return DecoratedBox(
         decoration: BoxDecoration(
-          color: const Color(0xFFF4F6FB),
+          color: const Color(0xFFFFFFFF),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFE0E5F3)),
+          border: Border.all(color: const Color(0xFF003566)),
         ),
         child: const SizedBox(
           height: 180,

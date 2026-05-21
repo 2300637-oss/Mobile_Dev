@@ -8,10 +8,12 @@ class ServiceCard extends StatelessWidget {
     super.key,
     required this.service,
     required this.onRequest,
+    this.showRequestAction = true,
   });
 
   final ProfileService service;
   final VoidCallback onRequest;
+  final bool showRequestAction;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +32,7 @@ class ServiceCard extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: const Color(0xFFF0F4FF),
+              color: const Color(0xFFFFFFFF),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
@@ -78,30 +80,32 @@ class ServiceCard extends StatelessWidget {
             label: 'Availability',
             value: open ? 'Open' : 'Closed',
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: open ? onRequest : null,
-              style: FilledButton.styleFrom(
-                backgroundColor: SkillHubProfileColors.navy,
-                foregroundColor: SkillHubProfileColors.white,
-                disabledBackgroundColor: const Color(0xFFF1F5F9),
-                disabledForegroundColor: SkillHubProfileColors.textSub,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          if (showRequestAction) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: open ? onRequest : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: SkillHubProfileColors.navy,
+                  foregroundColor: SkillHubProfileColors.white,
+                  disabledBackgroundColor: const Color(0xFFFFFFFF),
+                  disabledForegroundColor: SkillHubProfileColors.textSub,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                icon: Icon(
+                  open ? Icons.send_outlined : Icons.lock_outline,
+                  size: 15,
+                ),
+                label: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(open ? 'Request Commission' : 'Currently Closed'),
                 ),
               ),
-              icon: Icon(
-                open ? Icons.send_outlined : Icons.lock_outline,
-                size: 15,
-              ),
-              label: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(open ? 'Request Commission' : 'Currently Closed'),
-              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -136,9 +140,9 @@ class _CategoryChip extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFBEB),
+              color: const Color(0xFFFFFFFF),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFFDE68A)),
+              border: Border.all(color: const Color(0xFFFFC300)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -146,7 +150,7 @@ class _CategoryChip extends StatelessWidget {
                 const Icon(
                   Icons.local_offer_outlined,
                   size: 12,
-                  color: Color(0xFFB45309),
+                  color: Color(0xFF003566),
                 ),
                 const SizedBox(width: 4),
                 Flexible(
@@ -155,7 +159,7 @@ class _CategoryChip extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Color(0xFFB45309),
+                      color: Color(0xFF003566),
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                     ),
@@ -200,7 +204,7 @@ class _ServiceMeta extends StatelessWidget {
             child: Text(
               value,
               style: const TextStyle(
-                color: Color(0xFF334155),
+                color: Color(0xFF000011),
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
               ),

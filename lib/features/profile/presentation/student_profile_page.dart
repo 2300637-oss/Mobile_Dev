@@ -114,6 +114,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
                       onToggleSave: _toggleSave,
                       onDeletePost: _deletePost,
                       onSnack: _showSnack,
+                      onToolPressed: _handleProfilePostTool,
                       onUploadCv: _pickCvFile,
                       onAddPortfolioLink: _showAddPortfolioLinkDialog,
                       onAddProject: _showAddProjectDialog,
@@ -186,6 +187,14 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
   }
 
   Future<void> _createPost(String content, VisibilityType visibility) async {
+    await _createPostWithAttachment(content, visibility);
+  }
+
+  Future<void> _createPostWithAttachment(
+    String content,
+    VisibilityType visibility, {
+    ProfileAttachment? attachment,
+  }) async {
     final bundle = _bundle;
     if (bundle == null) {
       return;
@@ -197,6 +206,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
       authorId: widget.currentUserId ?? profile.userId,
       content: content,
       visibility: visibility,
+      attachment: attachment,
     );
 
     if (!mounted) {
@@ -210,6 +220,59 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
         posts: [post, ...bundle.posts],
       );
     });
+  }
+
+  Future<void> _pickProfilePostImage() async {
+    final bundle = _bundle;
+    if (bundle == null) {
+      return;
+    }
+
+    final image = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 88,
+    );
+    if (image == null || !mounted) {
+      return;
+    }
+
+    try {
+      final url = await widget.repository.uploadProfileFile(
+        userId: bundle.profile.userId,
+        path: image.path,
+        fileName: image.name,
+        bucket: 'profile-media',
+        contentType: image.mimeType ?? 'image/jpeg',
+      );
+      await _createPostWithAttachment(
+        'Shared an image update.',
+        VisibilityType.lnuPublic,
+        attachment: ProfileAttachment(
+          type: 'image',
+          label: image.name,
+          url: url,
+        ),
+      );
+      _showSnack('Image posted to your profile.');
+    } catch (error) {
+      _showSnack(_friendlyProfileError(error, 'Could not upload image.'));
+    }
+  }
+
+  void _handleProfilePostTool(String label) {
+    if (label == 'Image upload') {
+      _pickProfilePostImage();
+      return;
+    }
+    if (label == 'File upload') {
+      _pickCvFile();
+      return;
+    }
+    if (label == 'Portfolio link') {
+      _showAddPortfolioLinkDialog();
+      return;
+    }
+    _showSnack('$label is not available yet.');
   }
 
   Future<void> _showEditProfileSheet() async {
@@ -601,12 +664,14 @@ class _DefaultMockRepository implements StudentProfileRepository {
     required String authorId,
     required String content,
     required VisibilityType visibility,
+    ProfileAttachment? attachment,
   }) {
     return MockProfileRepository().createPost(
       profileId: profileId,
       authorId: authorId,
       content: content,
       visibility: visibility,
+      attachment: attachment,
     );
   }
 
@@ -710,6 +775,7 @@ class _MainTabContent extends StatelessWidget {
     required this.onToggleSave,
     required this.onDeletePost,
     required this.onSnack,
+    required this.onToolPressed,
     required this.onUploadCv,
     required this.onAddPortfolioLink,
     required this.onAddProject,
@@ -728,6 +794,7 @@ class _MainTabContent extends StatelessWidget {
   final ValueChanged<String> onToggleSave;
   final ValueChanged<String> onDeletePost;
   final ValueChanged<String> onSnack;
+  final ValueChanged<String> onToolPressed;
   final VoidCallback onUploadCv;
   final VoidCallback onAddPortfolioLink;
   final VoidCallback onAddProject;
@@ -748,6 +815,7 @@ class _MainTabContent extends StatelessWidget {
         onToggleSave: onToggleSave,
         onDeletePost: onDeletePost,
         onSnack: onSnack,
+        onToolPressed: onToolPressed,
         currentUserId: currentUserId,
         publicPostsRepository: publicPostsRepository,
       ),
@@ -791,6 +859,7 @@ class _PostsTab extends StatelessWidget {
     required this.onToggleSave,
     required this.onDeletePost,
     required this.onSnack,
+    required this.onToolPressed,
     required this.currentUserId,
     required this.publicPostsRepository,
   });
@@ -803,6 +872,7 @@ class _PostsTab extends StatelessWidget {
   final ValueChanged<String> onToggleSave;
   final ValueChanged<String> onDeletePost;
   final ValueChanged<String> onSnack;
+  final ValueChanged<String> onToolPressed;
   final String? currentUserId;
   final PublicPostDataSource publicPostsRepository;
 
@@ -813,8 +883,7 @@ class _PostsTab extends StatelessWidget {
         PostComposer(
           profile: bundle.profile,
           onPost: onCreatePost,
-          onToolPressed: (label) =>
-              onSnack('$label is ready for storage wiring.'),
+          onToolPressed: onToolPressed,
         ),
         const SizedBox(height: 12),
         if (currentUserId != null && currentUserId!.isNotEmpty) ...[
@@ -946,7 +1015,7 @@ class _SharedPublicPostsPanel extends StatelessWidget {
                   ],
                 ),
               ),
-              const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              const Divider(height: 1, color: Color(0xFFFFFFFF)),
               if (isLoading)
                 const Padding(
                   padding: EdgeInsets.all(18),
@@ -995,9 +1064,9 @@ class _SharedPublicPostTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFF003566)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1377,7 +1446,7 @@ class _ServicesTab extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const Divider(height: 1, color: Color(0xFFFFFFFF)),
           if (bundle.services.isEmpty)
             Padding(
               padding: const EdgeInsets.all(14),
@@ -1403,6 +1472,7 @@ class _ServicesTab extends StatelessWidget {
                             : constraints.maxWidth,
                         child: ServiceCard(
                           service: service,
+                          showRequestAction: false,
                           onRequest: () => onSnack(
                             'Commission request for ${service.title} started.',
                           ),
@@ -1438,7 +1508,7 @@ class _AboutTab extends StatelessWidget {
             child: Text(
               profile.bio,
               style: const TextStyle(
-                color: Color(0xFF334155),
+                color: Color(0xFF000011),
                 fontSize: 13.5,
                 height: 1.6,
               ),
@@ -1533,7 +1603,7 @@ class _SideProfilePanels extends StatelessWidget {
                 const _SideRow(
                   icon: Icons.verified_user_outlined,
                   text: 'Verified Student',
-                  color: Color(0xFF059669),
+                  color: Color(0xFF00E200),
                 ),
               const Divider(height: 20),
               const _SideRow(
@@ -1543,7 +1613,7 @@ class _SideProfilePanels extends StatelessWidget {
               ),
               const Text(
                 'Only verified LNU students can view this profile.',
-                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                style: TextStyle(color: Color(0xFF003566), fontSize: 11),
               ),
             ],
           ),
@@ -1590,25 +1660,25 @@ class _SideProfilePanels extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFFECFDF5), Color(0xFFF0FDF4)],
+              colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFA7F3D0)),
+            border: Border.all(color: const Color(0xFF00E200)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Row(
                 children: [
-                  Icon(Icons.bolt, color: Color(0xFF059669), size: 17),
+                  Icon(Icons.bolt, color: Color(0xFF00E200), size: 17),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Open for Commissions',
                       style: TextStyle(
-                        color: Color(0xFF065F46),
+                        color: Color(0xFF003566),
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -1619,7 +1689,7 @@ class _SideProfilePanels extends StatelessWidget {
               const Text(
                 'This student is currently accepting commission requests. Check the Services tab for pricing and delivery details.',
                 style: TextStyle(
-                  color: Color(0xFF047857),
+                  color: Color(0xFF00E200),
                   fontSize: 12,
                   height: 1.5,
                 ),
@@ -1630,7 +1700,7 @@ class _SideProfilePanels extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: onRequest,
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF059669),
+                    backgroundColor: const Color(0xFF00E200),
                   ),
                   icon: const Icon(Icons.send_outlined, size: 15),
                   label: const Text('Request Commission'),
@@ -1734,9 +1804,9 @@ class _VisibilitySummary extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F4FF),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFC7D2FE)),
+        border: Border.all(color: const Color(0xFF003566)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1767,7 +1837,7 @@ class _InfoNote extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: SkillHubProfileColors.border),
       ),

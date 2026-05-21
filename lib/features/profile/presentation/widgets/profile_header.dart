@@ -309,7 +309,7 @@ class _CompactBio extends StatelessWidget {
               height: 7,
               decoration: BoxDecoration(
                 color: profile.availability.canRequest
-                    ? const Color(0xFF22C55E)
+                    ? const Color(0xFF00E200)
                     : SkillHubProfileColors.red,
                 shape: BoxShape.circle,
               ),
@@ -321,7 +321,7 @@ class _CompactBio extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: Color(0xFFE8FFF0),
+                  color: Color(0xFFFFFFFF),
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                 ),
@@ -609,7 +609,7 @@ class _ProfileCard extends StatelessWidget {
               },
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const Divider(height: 1, color: Color(0xFFFFFFFF)),
           _StatsRow(profile: profile),
         ],
       ),
@@ -718,7 +718,7 @@ class _ProfileInfo extends StatelessWidget {
                   icon: Icons.verified,
                   text: 'Verified LNU Student',
                   color: SkillHubProfileColors.navy,
-                  background: Color(0xFFEEF2FF),
+                  background: Color(0xFFFFFFFF),
                 ),
               _Badge(
                 icon: profile.availability.canRequest
@@ -726,11 +726,11 @@ class _ProfileInfo extends StatelessWidget {
                     : Icons.lock_outline,
                 text: profile.availability.label,
                 color: profile.availability.canRequest
-                    ? const Color(0xFF047857)
+                    ? const Color(0xFF00E200)
                     : SkillHubProfileColors.red,
                 background: profile.availability.canRequest
-                    ? const Color(0xFFECFDF5)
-                    : const Color(0xFFFFF1F2),
+                    ? const Color(0xFFFFFFFF)
+                    : const Color(0xFFFFFFFF),
               ),
             ],
           ),
@@ -762,7 +762,7 @@ class _ProfileInfo extends StatelessWidget {
           Text(
             profile.bio,
             style: const TextStyle(
-              color: Color(0xFF475569),
+              color: Color(0xFF003566),
               fontSize: 13.5,
               height: 1.5,
             ),
@@ -883,7 +883,7 @@ class _StatItem extends StatelessWidget {
             label,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              color: Color(0xFF94A3B8),
+              color: Color(0xFF003566),
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
             ),
@@ -978,8 +978,8 @@ class _SkillChip extends StatelessWidget {
         fontSize: 11.5,
         fontWeight: FontWeight.w700,
       ),
-      backgroundColor: const Color(0xFFF0F4FF),
-      side: const BorderSide(color: Color(0xFFC7D2FE)),
+      backgroundColor: const Color(0xFFFFFFFF),
+      side: const BorderSide(color: Color(0xFF003566)),
       visualDensity: VisualDensity.compact,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       padding: const EdgeInsets.symmetric(horizontal: 4),

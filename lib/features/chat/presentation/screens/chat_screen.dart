@@ -15,7 +15,7 @@ class ChatScreen extends StatelessWidget {
     final controller = context.watch<ChatListController>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: const Color(0xFFFFFFFF),
       body: SafeArea(
         child: Column(
           children: [
@@ -138,7 +138,7 @@ class _ChatHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
       decoration: const BoxDecoration(
-        color: AppColors.midnightBlue,
+        color: AppColors.navy,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(18)),
       ),
       child: Row(
@@ -165,7 +165,7 @@ class _ChatHeader extends StatelessWidget {
                 SizedBox(height: 2),
                 Text(
                   'Messages, files, and commission updates',
-                  style: TextStyle(color: Color(0xFFDDE7FF), fontSize: 12),
+                  style: TextStyle(color: Color(0xFFFFFFFF), fontSize: 12),
                 ),
               ],
             ),
@@ -235,7 +235,7 @@ class _ConversationTile extends StatelessWidget {
                         Text(
                           _shortTime(summary.lastMessageAt),
                           style: const TextStyle(
-                            color: Colors.black45,
+                            color: AppColors.regalNavy,
                             fontSize: 11,
                           ),
                         ),
@@ -253,7 +253,7 @@ class _ConversationTile extends StatelessWidget {
                       style: TextStyle(
                         color: summary.isPeerTyping
                             ? AppColors.radioactiveGrass
-                            : Colors.black54,
+                            : AppColors.regalNavy,
                         fontWeight: summary.unreadCount > 0
                             ? FontWeight.w800
                             : FontWeight.w500,
@@ -320,7 +320,7 @@ class _ContactAvatar extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 24,
-          backgroundColor: AppColors.midnightBlue,
+          backgroundColor: AppColors.navy,
           backgroundImage: contact.avatarUrl.isEmpty
               ? null
               : NetworkImage(contact.avatarUrl),
@@ -363,11 +363,7 @@ class _EmptyChats extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.chat_bubble_outline,
-              color: AppColors.midnightBlue,
-              size: 54,
-            ),
+            Icon(Icons.chat_bubble_outline, color: AppColors.navy, size: 54),
             SizedBox(height: 12),
             Text(
               'No conversations yet',

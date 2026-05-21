@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../app/app_colors.dart';
 import '../../../auth/presentation/widgets/auth_error_banner.dart';
 import '../../../posts/data/public_post_repository.dart';
 import '../../../posts/data/supabase_public_post_repository.dart';
@@ -587,12 +588,12 @@ class _MiniStat extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 15, color: Colors.black54),
+        Icon(icon, size: 15, color: AppColors.regalNavy),
         const SizedBox(width: 3),
         Text(
           '$value',
           style: const TextStyle(
-            color: Colors.black54,
+            color: AppColors.regalNavy,
             fontSize: 12,
             fontWeight: FontWeight.w700,
           ),

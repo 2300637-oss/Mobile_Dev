@@ -39,59 +39,64 @@ class SupabaseStudentProfileRepository implements StudentProfileRepository {
         email: resolvedEmail,
         fallback: fallback.profile,
       );
+      final profileExtras = await _loadProfileExtras(
+        userId: resolvedUserId,
+        fallback: profile,
+      );
       final posts = await _loadRows<ProfilePost>(
         table: 'profile_posts',
-        profileId: profile.id,
+        profileId: profileExtras.id,
         fallback: fallback.posts,
         mapper: ProfilePost.fromMap,
       );
       final services = await _loadRows<ProfileService>(
         table: 'profile_services',
-        profileId: profile.id,
+        profileId: profileExtras.id,
         fallback: fallback.services,
         mapper: ProfileService.fromMap,
       );
       final portfolioItems = await _loadRows<PortfolioItem>(
         table: 'profile_portfolio_items',
-        profileId: profile.id,
+        profileId: profileExtras.id,
         fallback: fallback.portfolioItems,
         mapper: PortfolioItem.fromMap,
       );
       final reviews = await _loadRows<ProfileReview>(
         table: 'profile_reviews',
-        profileId: profile.id,
+        profileId: profileExtras.id,
         fallback: fallback.reviews,
         mapper: ProfileReview.fromMap,
       );
-      final publicPostCount = await _countPublicPosts(profile.userId);
+      final publicPostCount = await _countPublicPosts(profileExtras.userId);
       final combinedProfilePosts = [
-        ...(_postCache[profile.id] ?? const <ProfilePost>[]),
+        ...(_postCache[profileExtras.id] ?? const <ProfilePost>[]),
         ...posts,
       ];
       final combinedServices = [
-        ...(_serviceCache[profile.id] ?? const <ProfileService>[]),
+        ...(_serviceCache[profileExtras.id] ?? const <ProfileService>[]),
         ...services,
       ];
       final combinedPortfolioItems = [
-        ...(_portfolioCache[profile.id] ?? const <PortfolioItem>[]),
+        ...(_portfolioCache[profileExtras.id] ?? const <PortfolioItem>[]),
         ...portfolioItems,
       ];
       final combinedReviews = [
-        ...(_reviewCache[profile.id] ?? const <ProfileReview>[]),
+        ...(_reviewCache[profileExtras.id] ?? const <ProfileReview>[]),
         ...reviews,
       ];
 
       return StudentProfileBundle(
-        profile: (_profileCache[profile.userId] ?? profile).copyWith(
-          stats: profile.stats.copyWith(
-            posts: publicPostCount + combinedProfilePosts.length,
-            reviews: combinedReviews.length,
-            rating: _averageRating(
-              combinedReviews,
-              fallback.profile.stats.rating,
+        profile: (_profileCache[profileExtras.userId] ?? profileExtras)
+            .copyWith(
+              stats: profileExtras.stats.copyWith(
+                posts: publicPostCount + combinedProfilePosts.length,
+                reviews: combinedReviews.length,
+                rating: _averageRating(
+                  combinedReviews,
+                  fallback.profile.stats.rating,
+                ),
+              ),
             ),
-          ),
-        ),
         posts: combinedProfilePosts,
         services: combinedServices,
         portfolioItems: combinedPortfolioItems,
@@ -154,34 +159,11 @@ class SupabaseStudentProfileRepository implements StudentProfileRepository {
         final saved = StudentProfile.fromMap(
           rows.first,
         ).copyWith(userId: uid, email: profile.email);
+        await _saveProfileExtras(saved);
         _profileCache[uid] = saved;
         return saved;
       }
     } catch (error) {
-      final legacyPayload = Map<String, dynamic>.from(payload)
-        ..remove('avatar_url')
-        ..remove('cover_url')
-        ..remove('cv_url')
-        ..remove('portfolio_links')
-        ..remove('availability')
-        ..remove('profile_visibility');
-      final rows = await _client
-          .from('profiles')
-          .upsert(legacyPayload, onConflict: 'uid')
-          .select()
-          .limit(1);
-      if (rows.isNotEmpty) {
-        final saved = StudentProfile.fromMap(rows.first).copyWith(
-          userId: uid,
-          email: profile.email,
-          avatarUrl: profile.avatarUrl,
-          coverUrl: profile.coverUrl,
-          cvUrl: profile.cvUrl,
-          portfolioLinks: profile.portfolioLinks,
-        );
-        _profileCache[uid] = saved;
-        return saved;
-      }
       throw Exception('Supabase profile save failed: $error');
     }
 
@@ -194,6 +176,7 @@ class SupabaseStudentProfileRepository implements StudentProfileRepository {
     required String authorId,
     required String content,
     required VisibilityType visibility,
+    ProfileAttachment? attachment,
   }) async {
     final localPost = ProfilePost(
       id: 'local-${DateTime.now().microsecondsSinceEpoch}',
@@ -201,7 +184,7 @@ class SupabaseStudentProfileRepository implements StudentProfileRepository {
       authorId: authorId,
       content: content,
       visibility: visibility,
-      attachment: null,
+      attachment: attachment,
       likesCount: 0,
       commentsCount: 0,
       createdAt: DateTime.now(),
@@ -215,6 +198,9 @@ class SupabaseStudentProfileRepository implements StudentProfileRepository {
             'author_id': authorId,
             'content': content,
             'visibility': visibility.value,
+            'attachment_url': attachment?.url ?? '',
+            'attachment_type': attachment?.type ?? '',
+            'attachment_label': attachment?.label ?? '',
             'likes_count': 0,
             'comments_count': 0,
           })
@@ -458,6 +444,49 @@ class SupabaseStudentProfileRepository implements StudentProfileRepository {
     );
   }
 
+  Future<StudentProfile> _loadProfileExtras({
+    required String userId,
+    required StudentProfile fallback,
+  }) async {
+    try {
+      final row = await _client
+          .from('profile_extras')
+          .select('cv_url, portfolio_links')
+          .eq('user_id', userId)
+          .maybeSingle();
+      if (row == null) {
+        return fallback;
+      }
+      final cvUrl = _readString(row['cv_url']);
+      final portfolioLinks = _readStringList(row['portfolio_links']);
+      return fallback.copyWith(
+        cvUrl: cvUrl.isEmpty ? fallback.cvUrl : cvUrl,
+        portfolioLinks: portfolioLinks.isEmpty
+            ? fallback.portfolioLinks
+            : portfolioLinks,
+      );
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  Future<void> _saveProfileExtras(StudentProfile profile) async {
+    if (profile.userId.isEmpty) {
+      return;
+    }
+    try {
+      await _client.from('profile_extras').upsert({
+        'user_id': profile.userId,
+        'cv_url': profile.cvUrl,
+        'portfolio_links': profile.portfolioLinks,
+        'updated_at': DateTime.now().toIso8601String(),
+      }, onConflict: 'user_id');
+    } catch (_) {
+      // The main profiles row remains the primary save path. This table is
+      // a compatibility fallback for older Supabase schemas.
+    }
+  }
+
   Future<List<T>> _loadRows<T>({
     required String table,
     required String profileId,
@@ -510,6 +539,30 @@ class SupabaseStudentProfileRepository implements StudentProfileRepository {
       return 'LS';
     }
     return parts.map((part) => part.substring(0, 1).toUpperCase()).join();
+  }
+
+  String _readString(Object? value) {
+    if (value == null) {
+      return '';
+    }
+    return value.toString().trim();
+  }
+
+  List<String> _readStringList(Object? value) {
+    if (value is List) {
+      return value
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList(growable: false);
+    }
+    if (value is String && value.trim().isNotEmpty) {
+      return value
+          .split(',')
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toList(growable: false);
+    }
+    return const <String>[];
   }
 
   List<RatingDistribution> _distributionFor(

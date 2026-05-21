@@ -38,6 +38,7 @@ class MockProfileRepository implements StudentProfileRepository {
     required String authorId,
     required String content,
     required VisibilityType visibility,
+    ProfileAttachment? attachment,
   }) async {
     final post = ProfilePost(
       id: 'local-post-${_postCounter++}',
@@ -45,7 +46,7 @@ class MockProfileRepository implements StudentProfileRepository {
       authorId: authorId,
       content: content,
       visibility: visibility,
-      attachment: null,
+      attachment: attachment,
       likesCount: 0,
       commentsCount: 0,
       createdAt: DateTime.now(),

@@ -278,19 +278,19 @@ class _AdminColors {
 
   static const white = Color(0xFFFFFFFF);
   static const navy = Color(0xFF000088);
-  static const midBlue = Color(0xFF0A1B70);
+  static const midBlue = Color(0xFF000088);
   static const inkBlack = Color(0xFF000011);
-  static const yellow = Color(0xFFFFC20A);
+  static const yellow = Color(0xFFFFC300);
   static const gold = Color(0xFFFFD60A);
   static const red = Color(0xFFFF3838);
-  static const darkRed = Color(0xFFA81717);
+  static const darkRed = Color(0xFFFF3838);
   static const regalNavy = Color(0xFF003566);
-  static const blueAccent = Color(0xFF2A57DF);
+  static const blueAccent = Color(0xFF003566);
   static const green = Color(0xFF00E200);
-  static const grayBg = Color(0xFFF4F6FC);
-  static const border = Color(0xFFE2E8F0);
-  static const textMain = Color(0xFF1E293B);
-  static const textSub = Color(0xFF64748B);
+  static const grayBg = Color(0xFFFFFFFF);
+  static const border = Color(0xFF003566);
+  static const textMain = Color(0xFF000011);
+  static const textSub = Color(0xFF003566);
 }
 
 class _AdminSidebar extends StatelessWidget {
@@ -1670,13 +1670,13 @@ class _PostReviewCard extends StatelessWidget {
               gradient: LinearGradient(
                 colors: post.type == 'artwork'
                     ? const [
-                        Color(0xFFFFE0D2),
-                        Color(0xFF2A57DF),
+                        Color(0xFFFFFFFF),
+                        Color(0xFF003566),
                         Color(0xFF000088),
                       ]
                     : const [
-                        Color(0xFFFFF1B5),
-                        Color(0xFFFFC20A),
+                        Color(0xFFFFC300),
+                        Color(0xFFFFC300),
                         Color(0xFF003566),
                       ],
                 begin: Alignment.topLeft,
@@ -3846,10 +3846,10 @@ Color _severityColor(String severity) {
 
 Color _readableStatusColor(Color color) {
   if (color == _AdminColors.yellow || color == _AdminColors.gold) {
-    return const Color(0xFF6B4A00);
+    return const Color(0xFF003566);
   }
   if (color == _AdminColors.green) {
-    return const Color(0xFF0B5A1F);
+    return const Color(0xFF00E200);
   }
   if (color == _AdminColors.textSub) {
     return _AdminColors.textMain;

@@ -13,7 +13,7 @@ class NotificationsScreen extends StatelessWidget {
       icon: Icons.mark_chat_unread_outlined,
       title: 'New message alerts',
       message: 'Direct message notifications from other students appear here.',
-      accent: AppColors.royalAzure,
+      accent: AppColors.regalNavy,
     ),
     _NotificationItem(
       type: 'heart',
@@ -49,7 +49,7 @@ class NotificationsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final userId = Supabase.instance.client.auth.currentUser?.id ?? '';
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         leading: IconButton(
           tooltip: 'Back',
@@ -125,7 +125,7 @@ class NotificationsScreen extends StatelessWidget {
             title: row['title'] as String? ?? 'New message',
             message: row['body'] as String? ?? '',
             createdAt: _dateFromValue(row['created_at']),
-            accent: AppColors.royalAzure,
+            accent: AppColors.regalNavy,
           ),
         ),
       );
@@ -164,7 +164,7 @@ class NotificationsScreen extends StatelessWidget {
       'share' => AppColors.regalNavy,
       'commission' => AppColors.radioactiveGrass,
       'service_inquiry' => AppColors.gold,
-      _ => AppColors.royalAzure,
+      _ => AppColors.regalNavy,
     };
     return _LiveNotification(
       type: type,
@@ -207,7 +207,7 @@ class _SectionLabel extends StatelessWidget {
       child: Text(
         label,
         style: const TextStyle(
-          color: Colors.black54,
+          color: AppColors.regalNavy,
           fontSize: 12,
           fontWeight: FontWeight.w900,
           letterSpacing: .2,
@@ -231,7 +231,7 @@ class _LiveNotificationTile extends StatelessWidget {
       accent: item.accent,
       trailing: Text(
         _relativeTime(item.createdAt),
-        style: const TextStyle(color: Colors.black45, fontSize: 11),
+        style: const TextStyle(color: AppColors.regalNavy, fontSize: 11),
       ),
       onTap: () => _showDetails(context),
     );
@@ -272,7 +272,7 @@ class _LiveNotificationTile extends StatelessWidget {
                   ),
                   Text(
                     _relativeTime(item.createdAt),
-                    style: const TextStyle(color: Colors.black45),
+                    style: const TextStyle(color: AppColors.regalNavy),
                   ),
                 ],
               ),
@@ -280,7 +280,7 @@ class _LiveNotificationTile extends StatelessWidget {
               Text(
                 item.message.isEmpty ? 'No details available.' : item.message,
                 style: const TextStyle(
-                  color: Colors.black87,
+                  color: AppColors.inkBlack,
                   fontSize: 14,
                   height: 1.35,
                 ),
@@ -314,7 +314,10 @@ class _NotificationTile extends StatelessWidget {
             title: item.title,
             message: item.message,
             accent: item.accent,
-            trailing: const Icon(Icons.chevron_right, color: Colors.black38),
+            trailing: const Icon(
+              Icons.chevron_right,
+              color: AppColors.regalNavy,
+            ),
           ),
         ),
       ),
@@ -460,7 +463,10 @@ class _NotificationContent extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 message,
-                style: const TextStyle(color: Colors.black54, fontSize: 12),
+                style: const TextStyle(
+                  color: AppColors.regalNavy,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),

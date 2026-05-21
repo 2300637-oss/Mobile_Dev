@@ -242,7 +242,7 @@ class AdminAccessDeniedPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6FC),
+      backgroundColor: const Color(0xFFFFFFFF),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),
@@ -250,7 +250,7 @@ class AdminAccessDeniedPage extends StatelessWidget {
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
-              side: const BorderSide(color: Color(0xFFE2E8F0)),
+              side: const BorderSide(color: Color(0xFF003566)),
             ),
             child: Padding(
               padding: const EdgeInsets.all(28),
@@ -261,12 +261,12 @@ class AdminAccessDeniedPage extends StatelessWidget {
                     width: 64,
                     height: 64,
                     decoration: const BoxDecoration(
-                      color: Color(0xFFFFE7E7),
+                      color: Color(0xFFFFFFFF),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       Icons.admin_panel_settings_outlined,
-                      color: Color(0xFFA81717),
+                      color: Color(0xFFFF3838),
                       size: 34,
                     ),
                   ),
@@ -286,7 +286,7 @@ class AdminAccessDeniedPage extends StatelessWidget {
                         'Your account is signed in, but it does not have admin privileges for LNU SkillHub.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      color: Color(0xFF64748B),
+                      color: Color(0xFF003566),
                       height: 1.4,
                     ),
                   ),
@@ -312,7 +312,7 @@ class _AdminGuardLoading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      backgroundColor: Color(0xFFF4F6FC),
+      backgroundColor: Color(0xFFFFFFFF),
       body: Center(child: CircularProgressIndicator()),
     );
   }

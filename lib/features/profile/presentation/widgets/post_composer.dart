@@ -62,7 +62,7 @@ class _PostComposerState extends State<PostComposer> {
                   decoration: InputDecoration(
                     hintText: 'What skill update do you want to share?',
                     filled: true,
-                    fillColor: const Color(0xFFFAFBFD),
+                    fillColor: const Color(0xFFFFFFFF),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: const BorderSide(
@@ -231,7 +231,7 @@ class _VisibilityButton extends StatelessWidget {
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
         foregroundColor: SkillHubProfileColors.textMain,
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: const Color(0xFFFFFFFF),
         side: const BorderSide(color: SkillHubProfileColors.border),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
@@ -263,9 +263,9 @@ class _VisibilitySheet extends StatelessWidget {
             for (final visibility in VisibilityType.values)
               ListTile(
                 selected: visibility == selected,
-                selectedTileColor: const Color(0xFFF0F4FF),
+                selectedTileColor: const Color(0xFFFFFFFF),
                 leading: CircleAvatar(
-                  backgroundColor: const Color(0xFFEEF2FF),
+                  backgroundColor: const Color(0xFFFFFFFF),
                   foregroundColor: SkillHubProfileColors.navy,
                   child: Icon(_visibilityIcon(visibility), size: 18),
                 ),

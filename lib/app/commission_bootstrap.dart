@@ -80,7 +80,7 @@ class FirebaseSetupRequiredScreen extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0F766E)),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF003566)),
         useMaterial3: true,
       ),
       home: Scaffold(

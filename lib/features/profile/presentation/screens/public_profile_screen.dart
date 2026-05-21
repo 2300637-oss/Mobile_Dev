@@ -137,7 +137,7 @@ class _ReviewOtherUserCardState extends State<_ReviewOtherUserCard> {
             const SizedBox(height: 6),
             const Text(
               'Leave a review after a completed commission.',
-              style: TextStyle(color: Colors.black54, fontSize: 12),
+              style: TextStyle(color: AppColors.regalNavy, fontSize: 12),
             ),
             const SizedBox(height: 12),
             FilledButton.icon(
@@ -439,7 +439,7 @@ class _PublicProfileHeader extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     detail.isEmpty ? 'LNU student' : detail,
-                    style: const TextStyle(color: Color(0xFFDDE7FF)),
+                    style: const TextStyle(color: Color(0xFFFFFFFF)),
                   ),
                   const SizedBox(height: 10),
                   Wrap(
@@ -459,7 +459,7 @@ class _PublicProfileHeader extends StatelessWidget {
                         FilledButton.icon(
                           onPressed: () => _startChat(context),
                           style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.royalAzure,
+                            backgroundColor: AppColors.regalNavy,
                             foregroundColor: AppColors.white,
                             visualDensity: VisualDensity.compact,
                             padding: const EdgeInsets.symmetric(
@@ -629,7 +629,7 @@ class _ProfileInfo extends StatelessWidget {
                 .map(
                   (skill) => Chip(
                     label: Text(skill),
-                    backgroundColor: const Color(0xFFE9EEF9),
+                    backgroundColor: const Color(0xFFFFFFFF),
                     side: BorderSide.none,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -742,14 +742,14 @@ class _PublicPostTile extends StatelessWidget {
                     ? Icons.group_outlined
                     : Icons.public,
                 size: 16,
-                color: AppColors.royalAzure,
+                color: AppColors.regalNavy,
               ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   post.visibility.label,
                   style: const TextStyle(
-                    color: AppColors.royalAzure,
+                    color: AppColors.regalNavy,
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
                   ),
@@ -757,7 +757,10 @@ class _PublicPostTile extends StatelessWidget {
               ),
               Text(
                 _shortDate(post.createdAt),
-                style: const TextStyle(color: Colors.black45, fontSize: 12),
+                style: const TextStyle(
+                  color: AppColors.regalNavy,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -770,7 +773,7 @@ class _PublicPostTile extends StatelessWidget {
               onTap: () => _openUrl(context, post.attachment!.url),
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE9EEF9),
+                  color: const Color(0xFFFFFFFF),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Padding(
@@ -886,7 +889,7 @@ class _PortfolioActionTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
         ),
-        leading: Icon(icon, color: AppColors.royalAzure),
+        leading: Icon(icon, color: AppColors.regalNavy),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.open_in_new),
@@ -916,10 +919,10 @@ class _PortfolioItemTile extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: const Color(0xFFE9EEF9),
+              color: const Color(0xFFFFFFFF),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.work_outline, color: AppColors.royalAzure),
+            child: const Icon(Icons.work_outline, color: AppColors.regalNavy),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1094,7 +1097,7 @@ class _OfferTile extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.black45),
+            const Icon(Icons.chevron_right, color: AppColors.regalNavy),
           ],
         ),
       ),
@@ -1164,8 +1167,7 @@ class _OfferTile extends StatelessWidget {
   Future<void> _requestCommission(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await Supabase.instance.client.from('commission_requests').insert({
-        'service_id': service.id,
+      final payload = <String, dynamic>{
         'service_title': service.title,
         'client_id': currentUser.id,
         'client_name':
@@ -1177,7 +1179,13 @@ class _OfferTile extends StatelessWidget {
             ? profile.username
             : 'LNU student',
         'status': 'pending',
-      });
+      };
+      if (_isUuid(service.id)) {
+        payload['service_id'] = service.id;
+      }
+      await Supabase.instance.client
+          .from('commission_requests')
+          .insert(payload);
       if (context.mounted) {
         messenger
           ..hideCurrentSnackBar()
@@ -1185,17 +1193,12 @@ class _OfferTile extends StatelessWidget {
             const SnackBar(content: Text('Commission request sent.')),
           );
       }
-    } catch (_) {
+    } catch (error) {
+      final message = _friendlyCommissionRequestError(error);
       if (context.mounted) {
         messenger
           ..hideCurrentSnackBar()
-          ..showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Unable to request commission. Run the latest Supabase setup SQL.',
-              ),
-            ),
-          );
+          ..showSnackBar(SnackBar(content: Text(message)));
       }
     }
   }
@@ -1241,7 +1244,7 @@ class _MiniOfferChip extends StatelessWidget {
       label: Text(label),
       visualDensity: VisualDensity.compact,
       labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-      backgroundColor: const Color(0xFFE9EEF9),
+      backgroundColor: const Color(0xFFFFFFFF),
       side: BorderSide.none,
     );
   }
@@ -1332,6 +1335,16 @@ Future<_PublicPortfolioData> _loadPublicPortfolio(String uid) async {
         .select('id, uid, cv_url, portfolio_links')
         .eq('uid', uid)
         .maybeSingle();
+    Map<String, dynamic>? extrasRow;
+    try {
+      extrasRow = await Supabase.instance.client
+          .from('profile_extras')
+          .select('cv_url, portfolio_links')
+          .eq('user_id', uid)
+          .maybeSingle();
+    } catch (_) {
+      extrasRow = null;
+    }
     final profileId = (profileRow?['id'] ?? profileRow?['uid'] ?? uid)
         .toString()
         .trim();
@@ -1342,8 +1355,12 @@ Future<_PublicPortfolioData> _loadPublicPortfolio(String uid) async {
         .order('created_at', ascending: false);
 
     return _PublicPortfolioData(
-      cvUrl: (profileRow?['cv_url'] ?? '').toString().trim(),
-      links: _stringList(profileRow?['portfolio_links']),
+      cvUrl: (extrasRow?['cv_url'] ?? profileRow?['cv_url'] ?? '')
+          .toString()
+          .trim(),
+      links: _stringList(
+        extrasRow?['portfolio_links'] ?? profileRow?['portfolio_links'],
+      ),
       items: itemRows.map(PortfolioItem.fromMap).toList(growable: false),
     );
   } catch (_) {
@@ -1412,4 +1429,26 @@ String _shortLinkLabel(String value) {
     return host.replaceFirst('www.', '');
   }
   return value.replaceFirst(RegExp(r'https?://'), '');
+}
+
+bool _isUuid(String value) {
+  return RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+  ).hasMatch(value.trim());
+}
+
+String _friendlyCommissionRequestError(Object error) {
+  final text = error.toString();
+  if (text.contains('commission_requests') ||
+      text.contains('relation') ||
+      text.contains('schema cache')) {
+    return 'Commission requests table is missing. Run supabase_lnu_profile_notifications_setup.sql again.';
+  }
+  if (text.contains('row-level security') || text.contains('42501')) {
+    return 'Supabase blocked this request with RLS. Run the latest setup SQL policies.';
+  }
+  if (text.contains('foreign key') || text.contains('23503')) {
+    return 'This offer is not linked correctly in Supabase. Refresh and try again.';
+  }
+  return 'Unable to request commission: $text';
 }

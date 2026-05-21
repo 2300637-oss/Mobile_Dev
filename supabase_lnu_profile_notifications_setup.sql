@@ -75,6 +75,19 @@ create table if not exists public.commission_requests (
   updated_at timestamptz not null default now()
 );
 
+alter table public.commission_requests
+add column if not exists service_id uuid references public.profile_services(id) on delete set null,
+add column if not exists service_title text not null default '',
+add column if not exists client_id uuid references auth.users(id) on delete cascade,
+add column if not exists client_name text not null default 'LNU student',
+add column if not exists provider_id uuid references auth.users(id) on delete cascade,
+add column if not exists provider_name text not null default 'LNU student',
+add column if not exists note text not null default '',
+add column if not exists status text not null default 'pending',
+add column if not exists completed_at timestamptz,
+add column if not exists created_at timestamptz not null default now(),
+add column if not exists updated_at timestamptz not null default now();
+
 create table if not exists public.user_follows (
   follower_id uuid not null references auth.users(id) on delete cascade,
   following_id uuid not null references auth.users(id) on delete cascade,
@@ -153,7 +166,9 @@ do $$
 begin
   alter table public.post_shares
   add constraint post_shares_post_user_unique unique (post_id, user_id);
-exception when duplicate_object then null;
+exception
+  when duplicate_object then null;
+  when duplicate_table then null;
 end $$;
 
 alter table public.profile_posts enable row level security;
@@ -315,6 +330,10 @@ insert into storage.buckets (id, name, public)
 values ('profile-documents', 'profile-documents', true)
 on conflict (id) do update set public = true;
 
+insert into storage.buckets (id, name, public)
+values ('chat-attachments', 'chat-attachments', true)
+on conflict (id) do update set public = true;
+
 drop policy if exists "profile media authenticated read" on storage.objects;
 create policy "profile media authenticated read"
 on storage.objects for select
@@ -337,6 +356,31 @@ using (
 )
 with check (
   bucket_id in ('profile-media', 'profile-documents')
+  and auth.uid()::text = (storage.foldername(name))[1]
+);
+
+drop policy if exists "chat attachments authenticated read" on storage.objects;
+create policy "chat attachments authenticated read"
+on storage.objects for select
+using (bucket_id = 'chat-attachments' and auth.uid() is not null);
+
+drop policy if exists "chat attachments owner upload" on storage.objects;
+create policy "chat attachments owner upload"
+on storage.objects for insert
+with check (
+  bucket_id = 'chat-attachments'
+  and auth.uid()::text = (storage.foldername(name))[1]
+);
+
+drop policy if exists "chat attachments owner update" on storage.objects;
+create policy "chat attachments owner update"
+on storage.objects for update
+using (
+  bucket_id = 'chat-attachments'
+  and auth.uid()::text = (storage.foldername(name))[1]
+)
+with check (
+  bucket_id = 'chat-attachments'
   and auth.uid()::text = (storage.foldername(name))[1]
 );
 

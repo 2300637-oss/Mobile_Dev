@@ -183,12 +183,12 @@ class _PostMetric extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: Colors.black54),
+        Icon(icon, size: 16, color: AppColors.regalNavy),
         const SizedBox(width: 4),
         Text(
           '$value',
           style: const TextStyle(
-            color: Colors.black54,
+            color: AppColors.regalNavy,
             fontSize: 12,
             fontWeight: FontWeight.w700,
           ),
