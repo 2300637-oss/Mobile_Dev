@@ -11,8 +11,6 @@ import '../../../posts/data/supabase_public_post_repository.dart';
 import '../../../posts/domain/public_post.dart';
 import '../../../profile/data/follow_store.dart';
 
-enum _FeedFilter { forYou, following, artShowcase, openComms }
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -31,7 +29,6 @@ class _HomeScreenState extends State<HomeScreen> {
       FollowStore.loadForUser(userId);
     }
   }
-  _FeedFilter _selectedFilter = _FeedFilter.forYou;
 
   @override
   Widget build(BuildContext context) {
@@ -54,10 +51,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             SliverToBoxAdapter(
               child: _FeedTabs(
-                selectedFilter: _selectedFilter,
-                onSelected: (filter) {
-                  setState(() => _selectedFilter = filter);
-                },
+                selected: _selectedFeed,
+                onChanged: (label) => setState(() => _selectedFeed = label),
               ),
             ),
             StreamBuilder<List<PublicPost>>(
@@ -69,12 +64,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
 
-                final allPosts = snapshot.data ?? const <PublicPost>[];
-                final posts = _filterPosts(allPosts, user?.id);
+                final posts = _filterPosts(
+                  snapshot.data ?? const <PublicPost>[],
+                  user?.id,
+                );
                 if (posts.isEmpty) {
                   return SliverFillRemaining(
                     hasScrollBody: false,
-                    child: _EmptyFeed(message: _emptyMessage),
+                    child: _EmptyFeed(label: _selectedFeed),
                   );
                 }
 
@@ -107,36 +104,33 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<PublicPost> _filterPosts(List<PublicPost> posts, String? currentUserId) {
-    return switch (_selectedFilter) {
-      _FeedFilter.forYou => posts,
-      _FeedFilter.following =>
-        posts
-            .where(
-              (post) => currentUserId != null && post.authorId != currentUserId,
-            )
-            .toList(growable: false),
-      _FeedFilter.artShowcase =>
-        posts
-            .where((post) => post.type.toLowerCase().contains('artwork'))
-            .toList(growable: false),
-      _FeedFilter.openComms =>
-        posts
-            .where((post) {
-              final type = post.type.toLowerCase();
-              return type.contains('commission') || type.contains('service');
-            })
-            .toList(growable: false),
-    };
-  }
-
-  String get _emptyMessage {
-    return switch (_selectedFilter) {
-      _FeedFilter.forYou =>
-        'Create the first artwork, commission, service, progress, or announcement post.',
-      _FeedFilter.following => 'No followed creator posts yet.',
-      _FeedFilter.artShowcase => 'No artwork showcase posts yet.',
-      _FeedFilter.openComms => 'No open commission or service posts yet.',
-    };
+    final selected = _selectedFeed.toLowerCase();
+    if (selected == 'following') {
+      final followingIds = currentUserId == null
+          ? const <String>{}
+          : FollowStore.followingIds(currentUserId);
+      return posts
+          .where((post) => followingIds.contains(post.authorId))
+          .toList(growable: false);
+    }
+    if (selected == 'art showcase') {
+      return posts
+          .where((post) => post.type.toLowerCase().contains('art'))
+          .toList(growable: false);
+    }
+    if (selected == 'open comms') {
+      return posts
+          .where((post) {
+            final type = post.type.toLowerCase();
+            final caption = post.caption.toLowerCase();
+            return type.contains('commission') ||
+                type.contains('service') ||
+                caption.contains('open commission') ||
+                caption.contains('open comms');
+          })
+          .toList(growable: false);
+    }
+    return posts;
   }
 }
 
@@ -174,6 +168,12 @@ class _FeedHeader extends StatelessWidget {
                 ),
               ),
               IconButton(
+                tooltip: 'Commission Requests',
+                onPressed: () => context.go('/commission-requests'),
+                icon: const Icon(Icons.assignment_outlined),
+                color: AppColors.white,
+              ),
+              IconButton(
                 tooltip: 'Notifications',
                 onPressed: () => context.go('/notifications'),
                 icon: const Icon(Icons.notifications_outlined),
@@ -190,7 +190,7 @@ class _FeedHeader extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             email ?? 'LNU student',
-            style: const TextStyle(color: Color(0xFFDDE7FF), fontSize: 12),
+            style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 12),
           ),
         ],
       ),
@@ -198,11 +198,18 @@ class _FeedHeader extends StatelessWidget {
   }
 }
 
-class _FeedTabs extends StatelessWidget {
-  const _FeedTabs({required this.selectedFilter, required this.onSelected});
+class _FeedTabs extends StatefulWidget {
+  const _FeedTabs({required this.selected, required this.onChanged});
 
-  final _FeedFilter selectedFilter;
-  final ValueChanged<_FeedFilter> onSelected;
+  final String selected;
+  final ValueChanged<String> onChanged;
+
+  static const List<String> _labels = [
+    'For You',
+    'Following',
+    'Art Showcase',
+    'Open Comms',
+  ];
 
   @override
   State<_FeedTabs> createState() => _FeedTabsState();
@@ -217,26 +224,12 @@ class _FeedTabsState extends State<_FeedTabs> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         children: [
-          _FeedChip(
-            label: 'For You',
-            selected: selectedFilter == _FeedFilter.forYou,
-            onPressed: () => onSelected(_FeedFilter.forYou),
-          ),
-          _FeedChip(
-            label: 'Following',
-            selected: selectedFilter == _FeedFilter.following,
-            onPressed: () => onSelected(_FeedFilter.following),
-          ),
-          _FeedChip(
-            label: 'Art Showcase',
-            selected: selectedFilter == _FeedFilter.artShowcase,
-            onPressed: () => onSelected(_FeedFilter.artShowcase),
-          ),
-          _FeedChip(
-            label: 'Open Comms',
-            selected: selectedFilter == _FeedFilter.openComms,
-            onPressed: () => onSelected(_FeedFilter.openComms),
-          ),
+          for (final label in _FeedTabs._labels)
+            _FeedChip(
+              label: label,
+              selected: label == widget.selected,
+              onPressed: () => widget.onChanged(label),
+            ),
         ],
       ),
     );
@@ -263,7 +256,7 @@ class _FeedChip extends StatelessWidget {
         label: Text(label),
         backgroundColor: selected
             ? AppColors.schoolBusYellow
-            : const Color(0xFFE9EEF9),
+            : const Color(0xFFFFFFFF),
         labelStyle: TextStyle(
           color: selected ? AppColors.inkBlack : AppColors.navy,
           fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
@@ -433,14 +426,17 @@ class _PostAuthor extends StatelessWidget {
                     post.authorDepartment.isEmpty
                         ? post.authorEmail
                         : post.authorDepartment,
-                    style: const TextStyle(fontSize: 11, color: Colors.black54),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.regalNavy,
+                    ),
                   ),
                 ],
               ),
             ),
             Text(
               _relativeTime(post.createdAt),
-              style: const TextStyle(fontSize: 11, color: Colors.black45),
+              style: const TextStyle(fontSize: 11, color: AppColors.regalNavy),
             ),
             IconButton(
               tooltip: 'More',
@@ -866,7 +862,7 @@ class _PostViewersSheet extends StatelessWidget {
               post.caption,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.black54, fontSize: 12),
+              style: const TextStyle(color: AppColors.regalNavy, fontSize: 12),
             ),
             const SizedBox(height: 12),
             Flexible(
@@ -921,7 +917,7 @@ class _PostViewersSheet extends StatelessWidget {
                         trailing: Text(
                           _shortViewedTime(viewer.viewedAt),
                           style: const TextStyle(
-                            color: Colors.black45,
+                            color: AppColors.regalNavy,
                             fontSize: 12,
                           ),
                         ),
@@ -956,9 +952,9 @@ class _PostViewersSheet extends StatelessWidget {
 }
 
 class _EmptyFeed extends StatelessWidget {
-  const _EmptyFeed({required this.message});
+  const _EmptyFeed({required this.label});
 
-  final String message;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -981,7 +977,10 @@ class _EmptyFeed extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
             ),
             const SizedBox(height: 6),
-            Text(message, textAlign: TextAlign.center),
+            const Text(
+              'Create the first artwork, commission, service, progress, or announcement post.',
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -1046,11 +1045,7 @@ class _SkillHubBottomBar extends StatelessWidget {
               onPressed: () => context.go('/search'),
             ),
             const SizedBox(width: 48),
-            _BottomItem(
-              icon: Icons.chat_bubble_outline,
-              label: 'Chat',
-              onPressed: () => context.go('/chat'),
-            ),
+            _UnreadChatBottomItem(onPressed: () => context.go('/chat')),
             _BottomItem(
               icon: Icons.person_outline,
               label: 'Profile',
@@ -1069,12 +1064,14 @@ class _BottomItem extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.active = false,
+    this.badgeCount = 0,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
   final bool active;
+  final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
@@ -1086,7 +1083,37 @@ class _BottomItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 21),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(icon, color: color, size: 21),
+                if (badgeCount > 0)
+                  Positioned(
+                    right: -9,
+                    top: -8,
+                    child: Container(
+                      constraints: const BoxConstraints(
+                        minWidth: 17,
+                        minHeight: 17,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: const BoxDecoration(
+                        color: AppColors.cinnabar,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        badgeCount > 99 ? '99+' : '$badgeCount',
+                        style: const TextStyle(
+                          color: AppColors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 2),
             Text(
               label,
@@ -1100,6 +1127,68 @@ class _BottomItem extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _UnreadChatBottomItem extends StatelessWidget {
+  const _UnreadChatBottomItem({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final userId = context.watch<AuthController>().currentUser?.id;
+    if (userId == null || userId.isEmpty) {
+      return _BottomItem(
+        icon: Icons.chat_bubble_outline,
+        label: 'Chat',
+        onPressed: onPressed,
+      );
+    }
+
+    return StreamBuilder<int>(
+      stream: _watchUnreadChatCount(userId),
+      builder: (context, snapshot) {
+        return _BottomItem(
+          icon: Icons.chat_bubble_outline,
+          label: 'Chat',
+          badgeCount: snapshot.data ?? 0,
+          onPressed: onPressed,
+        );
+      },
+    );
+  }
+}
+
+Stream<int> _watchUnreadChatCount(String userId) async* {
+  yield await _loadUnreadChatCount(userId);
+  yield* Stream.periodic(
+    const Duration(seconds: 3),
+  ).asyncMap((_) => _loadUnreadChatCount(userId));
+}
+
+Future<int> _loadUnreadChatCount(String userId) async {
+  try {
+    final participantRows = await Supabase.instance.client
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', userId);
+    final conversationIds = participantRows
+        .map((row) => row['conversation_id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+    if (conversationIds.isEmpty) {
+      return 0;
+    }
+    final unreadRows = await Supabase.instance.client
+        .from('messages')
+        .select('id')
+        .inFilter('conversation_id', conversationIds)
+        .neq('sender_id', userId)
+        .filter('seen_at', 'is', null);
+    return unreadRows.length;
+  } catch (_) {
+    return 0;
   }
 }
 

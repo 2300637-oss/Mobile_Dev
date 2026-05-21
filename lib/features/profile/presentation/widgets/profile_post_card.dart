@@ -10,32 +10,22 @@ class ProfilePostCard extends StatelessWidget {
     required this.profile,
     required this.liked,
     required this.saved,
-    required this.isOwner,
     required this.onToggleLike,
     required this.onToggleSave,
     required this.onComment,
     required this.onShare,
-    required this.onPinToggle,
-    required this.onEdit,
-    required this.onEditAudience,
     required this.onDelete,
-    required this.onReport,
   });
 
   final ProfilePost post;
   final StudentProfile profile;
   final bool liked;
   final bool saved;
-  final bool isOwner;
   final VoidCallback onToggleLike;
   final VoidCallback onToggleSave;
   final VoidCallback onComment;
   final VoidCallback onShare;
-  final VoidCallback onPinToggle;
-  final VoidCallback onEdit;
-  final VoidCallback onEditAudience;
   final VoidCallback onDelete;
-  final VoidCallback onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -82,13 +72,13 @@ class ProfilePostCard extends StatelessWidget {
                         Text(
                           _formatDate(post.createdAt),
                           style: const TextStyle(
-                            color: Color(0xFF94A3B8),
+                            color: Color(0xFF003566),
                             fontSize: 11.5,
                           ),
                         ),
                         const Text(
                           '-',
-                          style: TextStyle(color: Color(0xFFCBD5E1)),
+                          style: TextStyle(color: Color(0xFF003566)),
                         ),
                         _VisibilityPill(visibility: post.visibility),
                       ],
@@ -96,74 +86,18 @@ class ProfilePostCard extends StatelessWidget {
                   ],
                 ),
               ),
-              PopupMenuButton<_PostMenuAction>(
-                key: Key('post-menu-${post.id}'),
+              IconButton(
                 tooltip: 'More',
-                onSelected: _handleMenuAction,
-                itemBuilder: (context) => isOwner
-                    ? [
-                        PopupMenuItem(
-                          value: _PostMenuAction.pin,
-                          child: Text(
-                            post.isPinned ? 'Unpin post' : 'Pin post',
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: _PostMenuAction.save,
-                          child: Text('Save post'),
-                        ),
-                        const PopupMenuItem(
-                          value: _PostMenuAction.edit,
-                          child: Text('Edit post'),
-                        ),
-                        const PopupMenuItem(
-                          value: _PostMenuAction.editAudience,
-                          child: Text('Edit audience'),
-                        ),
-                        const PopupMenuItem(
-                          value: _PostMenuAction.delete,
-                          child: Text('Delete post'),
-                        ),
-                      ]
-                    : const [
-                        PopupMenuItem(
-                          value: _PostMenuAction.report,
-                          child: Text('Report post'),
-                        ),
-                      ],
-                child: const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Icon(Icons.more_horiz, color: Color(0xFF94A3B8)),
-                ),
+                onPressed: () => _showPostMenu(context),
+                icon: const Icon(Icons.more_horiz, color: Color(0xFF003566)),
               ),
             ],
           ),
-          if (post.isPinned) ...[
-            const SizedBox(height: 8),
-            const Row(
-              children: [
-                Icon(
-                  Icons.push_pin,
-                  size: 14,
-                  color: SkillHubProfileColors.navy,
-                ),
-                SizedBox(width: 5),
-                Text(
-                  'Pinned post',
-                  style: TextStyle(
-                    color: SkillHubProfileColors.navy,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ],
           const SizedBox(height: 12),
           Text(
             post.content,
             style: const TextStyle(
-              color: Color(0xFF334155),
+              color: Color(0xFF000011),
               fontSize: 13.5,
               height: 1.55,
             ),
@@ -173,7 +107,7 @@ class ProfilePostCard extends StatelessWidget {
             _AttachmentPreview(attachment: post.attachment!, postId: post.id),
           ],
           const SizedBox(height: 10),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const Divider(height: 1, color: Color(0xFFFFFFFF)),
           const SizedBox(height: 4),
           Row(
             children: [
@@ -247,9 +181,12 @@ class ProfilePostCard extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                leading: const Icon(
+                  Icons.delete_outline,
+                  color: SkillHubProfileColors.red,
+                ),
                 title: const Text('Delete post'),
-                textColor: Colors.red,
+                textColor: SkillHubProfileColors.red,
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   onDelete();
@@ -263,8 +200,6 @@ class ProfilePostCard extends StatelessWidget {
   }
 }
 
-enum _PostMenuAction { pin, save, edit, editAudience, delete, report }
-
 class _VisibilityPill extends StatelessWidget {
   const _VisibilityPill({required this.visibility});
 
@@ -274,17 +209,17 @@ class _VisibilityPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = switch (visibility) {
       VisibilityType.lnuPublic => (
-        const Color(0xFFF0FDF4),
-        const Color(0xFF166534),
-        const Color(0xFFBBF7D0),
+        const Color(0xFFFFFFFF),
+        const Color(0xFF003566),
+        const Color(0xFF00E200),
       ),
       VisibilityType.connections => (
-        const Color(0xFFFFF7ED),
-        const Color(0xFFC2410C),
-        const Color(0xFFFED7AA),
+        const Color(0xFFFFFFFF),
+        const Color(0xFF003566),
+        const Color(0xFFFFC300),
       ),
       VisibilityType.private => (
-        const Color(0xFFF8FAFC),
+        const Color(0xFFFFFFFF),
         SkillHubProfileColors.textSub,
         SkillHubProfileColors.border,
       ),
@@ -363,7 +298,7 @@ class _AttachmentPreview extends StatelessWidget {
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            color: const Color(0xFFF8FAFC),
+            color: const Color(0xFFFFFFFF),
             child: Row(
               children: [
                 const Icon(

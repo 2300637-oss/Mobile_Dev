@@ -130,15 +130,6 @@ class ProfileStats {
   }
 }
 
-class ProfileActionBlocked implements Exception {
-  const ProfileActionBlocked(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
-}
-
 class StudentProfile {
   const StudentProfile({
     required this.id,
@@ -421,8 +412,6 @@ class ProfilePost {
     required this.attachment,
     required this.likesCount,
     required this.commentsCount,
-    required this.savedCount,
-    required this.isPinned,
     required this.createdAt,
   });
 
@@ -434,8 +423,6 @@ class ProfilePost {
   final ProfileAttachment? attachment;
   final int likesCount;
   final int commentsCount;
-  final int savedCount;
-  final bool isPinned;
   final DateTime createdAt;
 
   factory ProfilePost.fromJson(Map<String, dynamic> data) {
@@ -445,9 +432,6 @@ class ProfilePost {
   factory ProfilePost.fromMap(Map<String, dynamic>? data) {
     final source = data ?? const <String, dynamic>{};
     final attachmentUrl = _readString(source['attachment_url']);
-    final mediaUrls = source['media_urls'] is List
-        ? _readStringList(source['media_urls'])
-        : const <String>[];
     final inlineAttachment = source['attachment'] is Map<String, dynamic>
         ? ProfileAttachment.fromMap(
             source['attachment'] as Map<String, dynamic>,
@@ -455,30 +439,21 @@ class ProfilePost {
         : null;
     return ProfilePost(
       id: _readString(source['id']),
-      profileId: _readString(source['profile_id'] ?? source['author_id']),
+      profileId: _readString(source['profile_id']),
       authorId: _readString(source['author_id']),
-      content: _readString(source['content'] ?? source['caption']),
+      content: _readString(source['content']),
       visibility: VisibilityType.fromValue(source['visibility']),
       attachment:
           inlineAttachment ??
-          (attachmentUrl.isEmpty && mediaUrls.isEmpty
+          (attachmentUrl.isEmpty
               ? null
               : ProfileAttachment(
-                  type: _readString(
-                    source['attachment_type'] ?? source['media_type'],
-                    'file',
-                  ),
-                  label: _readString(source['attachment_label'], 'Post media'),
-                  url: attachmentUrl.isNotEmpty
-                      ? attachmentUrl
-                      : mediaUrls.first,
+                  type: _readString(source['attachment_type'], 'file'),
+                  label: _readString(source['attachment_label'], 'Attachment'),
+                  url: attachmentUrl,
                 )),
-      likesCount: _readInt(
-        source['likes_count'] ?? source['likes'] ?? source['heart_count'],
-      ),
+      likesCount: _readInt(source['likes_count'] ?? source['likes']),
       commentsCount: _readInt(source['comments_count'] ?? source['comments']),
-      savedCount: _readInt(source['saved_count']),
-      isPinned: _readBool(source['is_pinned']) ?? false,
       createdAt: _readDate(source['created_at'] ?? source['date']),
     );
   }
@@ -497,8 +472,6 @@ class ProfilePost {
       'attachment_label': attachment?.label,
       'likes_count': likesCount,
       'comments_count': commentsCount,
-      'saved_count': savedCount,
-      'is_pinned': isPinned,
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -512,8 +485,6 @@ class ProfilePost {
     ProfileAttachment? attachment,
     int? likesCount,
     int? commentsCount,
-    int? savedCount,
-    bool? isPinned,
     DateTime? createdAt,
   }) {
     return ProfilePost(
@@ -525,8 +496,6 @@ class ProfilePost {
       attachment: attachment ?? this.attachment,
       likesCount: likesCount ?? this.likesCount,
       commentsCount: commentsCount ?? this.commentsCount,
-      savedCount: savedCount ?? this.savedCount,
-      isPinned: isPinned ?? this.isPinned,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -589,30 +558,6 @@ class ProfileService {
       'created_at': createdAt.toIso8601String(),
     };
   }
-
-  ProfileService copyWith({
-    String? id,
-    String? profileId,
-    String? title,
-    String? description,
-    String? category,
-    String? priceRange,
-    String? deliveryTime,
-    AvailabilityStatus? availability,
-    DateTime? createdAt,
-  }) {
-    return ProfileService(
-      id: id ?? this.id,
-      profileId: profileId ?? this.profileId,
-      title: title ?? this.title,
-      description: description ?? this.description,
-      category: category ?? this.category,
-      priceRange: priceRange ?? this.priceRange,
-      deliveryTime: deliveryTime ?? this.deliveryTime,
-      availability: availability ?? this.availability,
-      createdAt: createdAt ?? this.createdAt,
-    );
-  }
 }
 
 class PortfolioItem {
@@ -667,28 +612,6 @@ class PortfolioItem {
       'item_type': itemType,
       'created_at': createdAt.toIso8601String(),
     };
-  }
-
-  PortfolioItem copyWith({
-    String? id,
-    String? profileId,
-    String? title,
-    String? description,
-    String? fileUrl,
-    String? externalUrl,
-    String? itemType,
-    DateTime? createdAt,
-  }) {
-    return PortfolioItem(
-      id: id ?? this.id,
-      profileId: profileId ?? this.profileId,
-      title: title ?? this.title,
-      description: description ?? this.description,
-      fileUrl: fileUrl ?? this.fileUrl,
-      externalUrl: externalUrl ?? this.externalUrl,
-      itemType: itemType ?? this.itemType,
-      createdAt: createdAt ?? this.createdAt,
-    );
   }
 }
 

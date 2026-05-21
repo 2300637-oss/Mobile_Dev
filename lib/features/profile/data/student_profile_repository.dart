@@ -10,6 +10,7 @@ abstract class StudentProfileRepository {
     required String authorId,
     required String content,
     required VisibilityType visibility,
+    ProfileAttachment? attachment,
   });
 
   Future<void> deletePost({required String profileId, required String postId});

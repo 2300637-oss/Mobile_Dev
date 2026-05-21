@@ -10,14 +10,12 @@ class ReviewsSection extends StatelessWidget {
     required this.reviews,
     required this.ratingDistribution,
     this.onAddReview,
-    required this.isOwner,
   });
 
   final StudentProfile profile;
   final List<ProfileReview> reviews;
   final List<RatingDistribution> ratingDistribution;
   final VoidCallback? onAddReview;
-  final bool isOwner;
 
   @override
   Widget build(BuildContext context) {
@@ -45,10 +43,6 @@ class ReviewsSection extends StatelessWidget {
           ],
           const SizedBox(height: 12),
           const _ReviewRuleNotice(),
-          if (isOwner) ...[
-            const SizedBox(height: 8),
-            const _OwnerReviewNotice(),
-          ],
           const SizedBox(height: 12),
           if (reviews.isEmpty)
             const _EmptyReviews()
@@ -63,33 +57,25 @@ class ReviewsSection extends StatelessWidget {
   }
 }
 
-class _OwnerReviewNotice extends StatelessWidget {
-  const _OwnerReviewNotice();
+class _EmptyReviews extends StatelessWidget {
+  const _EmptyReviews();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFFDE68A)),
+        border: Border.all(color: const Color(0xFFFFFFFF)),
       ),
-      child: const Row(
-        children: [
-          Icon(Icons.info_outline, color: Color(0xFFB45309), size: 16),
-          SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'You cannot review your own profile.',
-              style: TextStyle(
-                color: Color(0xFF92400E),
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
+      child: const Text(
+        'No reviews yet.',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: SkillHubProfileColors.textSub,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -105,9 +91,9 @@ class ReviewCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFBFD),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: const Color(0xFFFFFFFF)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,7 +102,7 @@ class ReviewCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
-                backgroundColor: const Color(0xFFEEF2FF),
+                backgroundColor: const Color(0xFFFFFFFF),
                 foregroundColor: SkillHubProfileColors.navy,
                 child: Text(
                   review.reviewerInitials,
@@ -154,7 +140,7 @@ class ReviewCard extends StatelessWidget {
                   Text(
                     _formatShortDate(review.createdAt),
                     style: const TextStyle(
-                      color: Color(0xFF94A3B8),
+                      color: Color(0xFF003566),
                       fontSize: 11,
                     ),
                   ),
@@ -166,7 +152,7 @@ class ReviewCard extends StatelessWidget {
           Text(
             review.comment,
             style: const TextStyle(
-              color: Color(0xFF475569),
+              color: Color(0xFF003566),
               fontSize: 13,
               height: 1.55,
             ),
@@ -201,7 +187,7 @@ class StarRow extends StatelessWidget {
           child: Icon(
             filled ? Icons.star : Icons.star_border,
             size: size,
-            color: filled ? color : const Color(0xFFCBD5E1),
+            color: filled ? color : const Color(0xFF003566),
           ),
         );
       }),
@@ -330,9 +316,9 @@ class _ReviewRuleNotice extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F4FF),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFC7D2FE)),
+        border: Border.all(color: const Color(0xFF003566)),
       ),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -7,17 +7,13 @@ class ServiceCard extends StatelessWidget {
   const ServiceCard({
     super.key,
     required this.service,
-    required this.isOwner,
     required this.onRequest,
-    required this.onEdit,
-    required this.onDelete,
+    this.showRequestAction = true,
   });
 
   final ProfileService service;
-  final bool isOwner;
   final VoidCallback onRequest;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final bool showRequestAction;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +32,7 @@ class ServiceCard extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: const Color(0xFFF0F4FF),
+              color: const Color(0xFFFFFFFF),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
@@ -45,43 +41,15 @@ class ServiceCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 11),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  service.title,
-                  style: const TextStyle(
-                    color: SkillHubProfileColors.textMain,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              if (isOwner)
-                PopupMenuButton<_ServiceAction>(
-                  tooltip: 'Service options',
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(
-                      value: _ServiceAction.edit,
-                      child: Text('Edit service'),
-                    ),
-                    PopupMenuItem(
-                      value: _ServiceAction.delete,
-                      child: Text('Delete service'),
-                    ),
-                  ],
-                  onSelected: (action) {
-                    switch (action) {
-                      case _ServiceAction.edit:
-                        onEdit();
-                      case _ServiceAction.delete:
-                        onDelete();
-                    }
-                  },
-                  child: const Icon(Icons.more_horiz, size: 20),
-                ),
-            ],
+          Text(
+            service.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: SkillHubProfileColors.textMain,
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
@@ -112,17 +80,8 @@ class ServiceCard extends StatelessWidget {
             label: 'Availability',
             value: open ? 'Open' : 'Closed',
           ),
-          const SizedBox(height: 12),
-          if (isOwner)
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit_outlined, size: 15),
-                label: const Text('Owner tools'),
-              ),
-            )
-          else
+          if (showRequestAction) ...[
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -130,7 +89,7 @@ class ServiceCard extends StatelessWidget {
                 style: FilledButton.styleFrom(
                   backgroundColor: SkillHubProfileColors.navy,
                   foregroundColor: SkillHubProfileColors.white,
-                  disabledBackgroundColor: const Color(0xFFF1F5F9),
+                  disabledBackgroundColor: const Color(0xFFFFFFFF),
                   disabledForegroundColor: SkillHubProfileColors.textSub,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -140,13 +99,13 @@ class ServiceCard extends StatelessWidget {
                   open ? Icons.send_outlined : Icons.lock_outline,
                   size: 15,
                 ),
-                label: Text(open ? 'Request Commission' : 'Currently Closed'),
-              ),
-              label: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(open ? 'Request Commission' : 'Currently Closed'),
+                label: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(open ? 'Request Commission' : 'Currently Closed'),
+                ),
               ),
             ),
+          ],
         ],
       ),
     );
@@ -167,8 +126,6 @@ class ServiceCard extends StatelessWidget {
   }
 }
 
-enum _ServiceAction { edit, delete }
-
 class _CategoryChip extends StatelessWidget {
   const _CategoryChip({required this.label});
 
@@ -183,9 +140,9 @@ class _CategoryChip extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFBEB),
+              color: const Color(0xFFFFFFFF),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFFDE68A)),
+              border: Border.all(color: const Color(0xFFFFC300)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -193,7 +150,7 @@ class _CategoryChip extends StatelessWidget {
                 const Icon(
                   Icons.local_offer_outlined,
                   size: 12,
-                  color: Color(0xFFB45309),
+                  color: Color(0xFF003566),
                 ),
                 const SizedBox(width: 4),
                 Flexible(
@@ -202,7 +159,7 @@ class _CategoryChip extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Color(0xFFB45309),
+                      color: Color(0xFF003566),
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                     ),
@@ -247,7 +204,7 @@ class _ServiceMeta extends StatelessWidget {
             child: Text(
               value,
               style: const TextStyle(
-                color: Color(0xFF334155),
+                color: Color(0xFF000011),
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
               ),

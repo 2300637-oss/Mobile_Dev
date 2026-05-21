@@ -38,6 +38,7 @@ class MockProfileRepository implements StudentProfileRepository {
     required String authorId,
     required String content,
     required VisibilityType visibility,
+    ProfileAttachment? attachment,
   }) async {
     final post = ProfilePost(
       id: 'local-post-${_postCounter++}',
@@ -45,11 +46,9 @@ class MockProfileRepository implements StudentProfileRepository {
       authorId: authorId,
       content: content,
       visibility: visibility,
-      attachment: null,
+      attachment: attachment,
       likesCount: 0,
       commentsCount: 0,
-      savedCount: 0,
-      isPinned: false,
       createdAt: DateTime.now(),
     );
     _bundle = _bundle.copyWith(posts: [post, ..._bundle.posts]);
@@ -221,8 +220,6 @@ final mockProfilePosts = [
     ),
     likesCount: 34,
     commentsCount: 12,
-    savedCount: 8,
-    isPinned: false,
     createdAt: DateTime(2026, 5, 18),
   ),
   ProfilePost(
@@ -239,8 +236,6 @@ final mockProfilePosts = [
     ),
     likesCount: 58,
     commentsCount: 17,
-    savedCount: 14,
-    isPinned: false,
     createdAt: DateTime(2026, 5, 10),
   ),
   ProfilePost(
@@ -257,8 +252,6 @@ final mockProfilePosts = [
     ),
     likesCount: 91,
     commentsCount: 22,
-    savedCount: 21,
-    isPinned: false,
     createdAt: DateTime(2026, 4, 28),
   ),
 ];

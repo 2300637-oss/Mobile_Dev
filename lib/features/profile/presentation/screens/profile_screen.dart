@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../app/app_colors.dart';
 import '../../../auth/presentation/widgets/auth_error_banner.dart';
 import '../../../posts/data/public_post_repository.dart';
 import '../../../posts/data/supabase_public_post_repository.dart';
@@ -28,9 +28,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _usernameController = TextEditingController();
   final _bioController = TextEditingController();
   final _skillsController = TextEditingController();
-  final _imagePicker = ImagePicker();
   String _availabilityStatus = 'available';
-  String _profilePictureUrl = '';
   String? _loadedUid;
 
   @override
@@ -93,11 +91,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 16),
                       ],
-                      _ProfileHeader(
-                        profile: profile,
-                        isSaving: controller.isSaving,
-                        onPickImage: _pickProfilePicture,
-                      ),
+                      _ProfileHeader(profile: profile),
                       const SizedBox(height: 24),
                       TextFormField(
                         controller: _fullNameController,
@@ -238,7 +232,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _bioController.text = profile.bio;
     _skillsController.text = profile.skills.join(', ');
     _availabilityStatus = profile.availabilityStatus;
-    _profilePictureUrl = profile.profilePictureUrl;
   }
 
   Future<void> _saveProfile() async {
@@ -255,7 +248,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final saved = await controller.saveProfile(
       UserProfile(
         uid: profile.uid,
-        profilePictureUrl: _profilePictureUrl,
+        profilePictureUrl: profile.profilePictureUrl,
         fullName: _fullNameController.text.trim(),
         studentId: _studentIdController.text.trim(),
         college: _collegeController.text.trim(),
@@ -280,56 +273,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _pickProfilePicture() async {
-    final profile = context.read<ProfileController>().profile;
-    if (profile == null) {
-      return;
-    }
-
-    final image = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-      maxWidth: 1200,
-    );
-    if (image == null || !mounted) {
-      return;
-    }
-
-    final controller = context.read<ProfileController>();
-    final url = await controller.uploadProfilePicture(image);
-    if (url == null || !mounted) {
-      return;
-    }
-
-    setState(() => _profilePictureUrl = url);
-    final saved = await controller.saveProfile(
-      UserProfile(
-        uid: profile.uid,
-        profilePictureUrl: url,
-        fullName: _fullNameController.text.trim(),
-        studentId: _studentIdController.text.trim(),
-        college: _collegeController.text.trim(),
-        department: _departmentController.text.trim(),
-        yearLevel: _yearLevelController.text.trim(),
-        username: _usernameController.text.trim(),
-        bio: _bioController.text.trim(),
-        skills: _skillsController.text
-            .split(',')
-            .map((skill) => skill.trim())
-            .where((skill) => skill.isNotEmpty)
-            .toList(),
-        portfolioGallery: profile.portfolioGallery,
-        availabilityStatus: _availabilityStatus,
-      ),
-    );
-
-    if (saved && mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Profile picture updated.')));
-    }
-  }
-
   String? Function(String?) _required(String label) {
     return (value) {
       if (value == null || value.trim().isEmpty) {
@@ -341,15 +284,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({
-    required this.profile,
-    required this.isSaving,
-    required this.onPickImage,
-  });
+  const _ProfileHeader({required this.profile});
 
   final UserProfile? profile;
-  final bool isSaving;
-  final VoidCallback onPickImage;
 
   @override
   Widget build(BuildContext context) {
@@ -357,42 +294,19 @@ class _ProfileHeader extends StatelessWidget {
 
     return Row(
       children: [
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: colorScheme.primaryContainer,
-              backgroundImage: profile?.profilePictureUrl.isNotEmpty == true
-                  ? NetworkImage(profile!.profilePictureUrl)
-                  : null,
-              child: profile?.profilePictureUrl.isNotEmpty == true
-                  ? null
-                  : Icon(
-                      Icons.person_outline,
-                      color: colorScheme.onPrimaryContainer,
-                      size: 40,
-                    ),
-            ),
-            Positioned(
-              right: -2,
-              bottom: -2,
-              child: IconButton.filled(
-                tooltip: 'Change profile picture',
-                onPressed: isSaving ? null : onPickImage,
-                style: IconButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: colorScheme.onPrimary,
+        CircleAvatar(
+          radius: 40,
+          backgroundColor: colorScheme.primaryContainer,
+          backgroundImage: profile?.profilePictureUrl.isNotEmpty == true
+              ? NetworkImage(profile!.profilePictureUrl)
+              : null,
+          child: profile?.profilePictureUrl.isNotEmpty == true
+              ? null
+              : Icon(
+                  Icons.person_outline,
+                  color: colorScheme.onPrimaryContainer,
+                  size: 40,
                 ),
-                icon: isSaving
-                    ? const SizedBox.square(
-                        dimension: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.camera_alt_outlined, size: 18),
-              ),
-            ),
-          ],
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -592,147 +506,72 @@ class _ProfilePostTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: () => _showPostDetails(context),
-          child: Ink(
-            padding: const EdgeInsets.all(12),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 54,
+            height: 54,
             decoration: BoxDecoration(
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
+              color: Theme.of(context).colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(8),
+              image: post.mediaUrls.isNotEmpty && !post.hasVideo
+                  ? DecorationImage(
+                      image: NetworkImage(post.mediaUrls.first),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
-            child: Row(
+            child: post.mediaUrls.isEmpty || post.hasVideo
+                ? Icon(
+                    post.hasVideo
+                        ? Icons.play_circle_outline
+                        : Icons.article_outlined,
+                  )
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                    image: post.mediaUrls.isNotEmpty && !post.hasVideo
-                        ? DecorationImage(
-                            image: NetworkImage(post.mediaUrls.first),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                  child: post.mediaUrls.isEmpty || post.hasVideo
-                      ? Icon(
-                          post.hasVideo
-                              ? Icons.play_circle_outline
-                              : Icons.article_outlined,
-                        )
-                      : null,
+                Text(
+                  post.type,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        post.type,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        post.caption,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          _MiniStat(
-                            icon: Icons.favorite,
-                            value: post.heartCount,
-                          ),
-                          const SizedBox(width: 12),
-                          _MiniStat(
-                            icon: Icons.remove_red_eye_outlined,
-                            value: post.viewCount,
-                          ),
-                          const SizedBox(width: 12),
-                          _MiniStat(
-                            icon: Icons.share_outlined,
-                            value: post.shareCount,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 4),
+                Text(
+                  post.caption,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _MiniStat(icon: Icons.favorite, value: post.heartCount),
+                    const SizedBox(width: 12),
+                    _MiniStat(
+                      icon: Icons.remove_red_eye_outlined,
+                      value: post.viewCount,
+                    ),
+                    const SizedBox(width: 12),
+                    _MiniStat(
+                      icon: Icons.share_outlined,
+                      value: post.shareCount,
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  void _showPostDetails(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (context) => _ProfilePostDetailsSheet(post: post),
-    );
-  }
-}
-
-class _ProfilePostDetailsSheet extends StatelessWidget {
-  const _ProfilePostDetailsSheet({required this.post});
-
-  final PublicPost post;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              post.type,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 10),
-            if (post.mediaUrls.isNotEmpty && !post.hasVideo) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  post.mediaUrls.first,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const SizedBox.shrink(),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            Text(post.caption),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                _MiniStat(icon: Icons.favorite, value: post.heartCount),
-                const SizedBox(width: 16),
-                _MiniStat(
-                  icon: Icons.remove_red_eye_outlined,
-                  value: post.viewCount,
-                ),
-                const SizedBox(width: 16),
-                _MiniStat(icon: Icons.share_outlined, value: post.shareCount),
-              ],
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -749,12 +588,12 @@ class _MiniStat extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 15, color: Colors.black54),
+        Icon(icon, size: 15, color: AppColors.regalNavy),
         const SizedBox(width: 3),
         Text(
           '$value',
           style: const TextStyle(
-            color: Colors.black54,
+            color: AppColors.regalNavy,
             fontSize: 12,
             fontWeight: FontWeight.w700,
           ),

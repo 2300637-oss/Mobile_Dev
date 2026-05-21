@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'dart:io';
 import 'dart:math';
 
@@ -15,12 +14,19 @@ class SupabaseChatRepository implements ChatDataSource {
   final SupabaseClient _client;
 
   @override
-  Stream<List<ConversationSummary>> watchConversations(String currentUserId) {
-    return _client
-        .from('conversation_participants')
-        .stream(primaryKey: ['conversation_id', 'user_id'])
-        .eq('user_id', currentUserId)
-        .asyncMap((rows) => _loadConversationSummaries(currentUserId, rows));
+  Stream<List<ConversationSummary>> watchConversations(
+    String currentUserId,
+  ) async* {
+    Future<List<ConversationSummary>> load() async {
+      final rows = await _client
+          .from('conversation_participants')
+          .select('conversation_id, user_id')
+          .eq('user_id', currentUserId);
+      return _loadConversationSummaries(currentUserId, rows);
+    }
+
+    yield await load();
+    yield* Stream.periodic(const Duration(seconds: 3)).asyncMap((_) => load());
   }
 
   @override
@@ -91,18 +97,17 @@ class SupabaseChatRepository implements ChatDataSource {
       return null;
     }
 
-    final profiles = await _client
+    final profile = await _client
         .from('profiles')
         .select(
           'uid, full_name, username, college, department, year_level, profile_picture_url',
         )
         .eq('uid', peerId)
-        .limit(1);
-    if (profiles.isEmpty) {
-      return ChatContact(id: peerId, name: 'LNU student', detail: '');
-    }
-
-    return _contactFromProfile(profiles.first, fallbackId: peerId);
+        .maybeSingle();
+    return _contactFromProfile(
+      profile ?? const <String, dynamic>{},
+      fallbackId: peerId,
+    );
   }
 
   @override
@@ -115,8 +120,7 @@ class SupabaseChatRepository implements ChatDataSource {
       return existing;
     }
 
-    final conversationId = _createUuidV4();
-
+    final conversationId = _uuidV4();
     await _client.from('conversations').insert({
       'id': conversationId,
       'last_message_text': '',
@@ -245,7 +249,10 @@ class SupabaseChatRepository implements ChatDataSource {
         .upload(
           path,
           File(file.path),
-          fileOptions: FileOptions(contentType: file.mimeType, upsert: false),
+          fileOptions: FileOptions(
+            contentType: file.mimeType ?? 'image/jpeg',
+            upsert: true,
+          ),
         );
     return _client.storage.from('chat-attachments').getPublicUrl(path);
   }
@@ -431,21 +438,4 @@ DateTime? _dateFromValue(Object? value) {
     return DateTime.tryParse(value);
   }
   return null;
-}
-
-String _createUuidV4() {
-  final random = Random.secure();
-  final bytes = List<int>.generate(16, (_) => random.nextInt(256));
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-
-  String hexByte(int byte) => byte.toRadixString(16).padLeft(2, '0');
-  final hex = bytes.map(hexByte).join();
-  return [
-    hex.substring(0, 8),
-    hex.substring(8, 12),
-    hex.substring(12, 16),
-    hex.substring(16, 20),
-    hex.substring(20),
-  ].join('-');
 }

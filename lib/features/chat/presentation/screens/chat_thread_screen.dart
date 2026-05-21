@@ -35,7 +35,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: const Color(0xFFFFFFFF),
       body: SafeArea(
         child: Column(
           children: [
@@ -112,7 +112,7 @@ class _ThreadHeader extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 10, 12, 10),
-      decoration: const BoxDecoration(color: AppColors.midnightBlue),
+      decoration: const BoxDecoration(color: AppColors.navy),
       child: Row(
         children: [
           IconButton(
@@ -132,7 +132,7 @@ class _ThreadHeader extends StatelessWidget {
                 : Text(
                     title.characters.first.toUpperCase(),
                     style: const TextStyle(
-                      color: AppColors.midnightBlue,
+                      color: AppColors.navy,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -228,7 +228,7 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bubbleColor = isMine ? AppColors.royalAzure : AppColors.white;
+    final bubbleColor = isMine ? AppColors.regalNavy : AppColors.white;
     final textColor = isMine ? AppColors.white : AppColors.inkBlack;
 
     return Align(
@@ -282,7 +282,9 @@ class _MessageBubble extends StatelessWidget {
                   Text(
                     _shortTime(message.createdAt),
                     style: TextStyle(
-                      color: isMine ? const Color(0xCCFFFFFF) : Colors.black45,
+                      color: isMine
+                          ? const Color(0xCCFFFFFF)
+                          : AppColors.regalNavy,
                       fontSize: 10,
                     ),
                   ),
@@ -459,7 +461,7 @@ class _MessageComposer extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: 'Type a message...',
                 filled: true,
-                fillColor: const Color(0xFFF3F4F8),
+                fillColor: const Color(0xFFFFFFFF),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 10,
@@ -475,7 +477,7 @@ class _MessageComposer extends StatelessWidget {
           IconButton.filled(
             tooltip: 'Send',
             style: IconButton.styleFrom(
-              backgroundColor: AppColors.royalAzure,
+              backgroundColor: AppColors.regalNavy,
               foregroundColor: AppColors.white,
             ),
             onPressed: isSending ? null : onSend,

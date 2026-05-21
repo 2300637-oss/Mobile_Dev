@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthUser;
 
 import '../../../../app/app_colors.dart';
@@ -12,22 +13,23 @@ class CommissionRequestsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Commission Requests')),
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Back',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: const Text('Commission Requests'),
+      ),
       body: SafeArea(
         child: StreamBuilder<List<Map<String, dynamic>>>(
-          stream: Supabase.instance.client
-              .from('commission_requests')
-              .stream(primaryKey: ['id'])
-              .order('created_at', ascending: false)
-              .map(
-                (rows) => rows
-                    .where(
-                      (row) =>
-                          row['client_id'] == currentUser.id ||
-                          row['provider_id'] == currentUser.id,
-                    )
-                    .toList(growable: false),
-              ),
+          stream: _watchCommissionRequests(currentUser.id),
           builder: (context, snapshot) {
             if (snapshot.hasError) {
               return const _SetupMessage();
@@ -41,18 +43,112 @@ class CommissionRequestsScreen extends StatelessWidget {
               return const _EmptyRequests();
             }
 
+            final pending = requests
+                .where((request) => request['status'] == 'pending')
+                .length;
+            final accepted = requests
+                .where(
+                  (request) =>
+                      request['status'] == 'accepted' ||
+                      request['status'] == 'in_progress',
+                )
+                .length;
+
             return ListView.separated(
               padding: const EdgeInsets.all(16),
-              itemCount: requests.length,
+              itemCount: requests.length + 1,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) => _CommissionRequestCard(
-                request: requests[index],
-                currentUserId: currentUser.id,
-              ),
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return _RequestSummary(pending: pending, active: accepted);
+                }
+                return _CommissionRequestCard(
+                  request: requests[index - 1],
+                  currentUserId: currentUser.id,
+                );
+              },
             );
           },
         ),
       ),
+    );
+  }
+}
+
+Stream<List<Map<String, dynamic>>> _watchCommissionRequests(
+  String userId,
+) async* {
+  yield await _loadCommissionRequests(userId);
+  yield* Stream.periodic(
+    const Duration(seconds: 3),
+  ).asyncMap((_) => _loadCommissionRequests(userId));
+}
+
+Future<List<Map<String, dynamic>>> _loadCommissionRequests(
+  String userId,
+) async {
+  final rows = await Supabase.instance.client
+      .from('commission_requests')
+      .select()
+      .or('client_id.eq.$userId,provider_id.eq.$userId')
+      .order('created_at', ascending: false);
+  return rows.map((row) => Map<String, dynamic>.from(row)).toList();
+}
+
+class _RequestSummary extends StatelessWidget {
+  const _RequestSummary({required this.pending, required this.active});
+
+  final int pending;
+  final int active;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.navy,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Expanded(
+              child: _SummaryNumber(value: pending, label: 'Pending'),
+            ),
+            Container(width: 1, height: 38, color: const Color(0x33FFFFFF)),
+            Expanded(
+              child: _SummaryNumber(value: active, label: 'Accepted'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryNumber extends StatelessWidget {
+  const _SummaryNumber({required this.value, required this.label});
+
+  final int value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          '$value',
+          style: const TextStyle(
+            color: AppColors.schoolBusYellow,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(color: AppColors.white, fontSize: 12),
+        ),
+      ],
     );
   }
 }
@@ -78,8 +174,10 @@ class _CommissionRequestCardState extends State<_CommissionRequestCard> {
     final request = widget.request;
     final status = (request['status'] ?? 'pending').toString();
     final isProvider = request['provider_id'] == widget.currentUserId;
+    final canAccept = isProvider && status == 'pending';
+    final canDecline = isProvider && status == 'pending';
     final canMarkDone =
-        isProvider && status != 'completed' && status != 'cancelled';
+        isProvider && (status == 'accepted' || status == 'in_progress');
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -112,7 +210,7 @@ class _CommissionRequestCardState extends State<_CommissionRequestCard> {
               isProvider
                   ? 'Client: ${(request['client_name'] ?? 'LNU student')}'
                   : 'Artist: ${(request['provider_name'] ?? 'LNU student')}',
-              style: const TextStyle(color: Colors.black54),
+              style: const TextStyle(color: AppColors.regalNavy),
             ),
             if ((request['note'] ?? '').toString().trim().isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -123,7 +221,12 @@ class _CommissionRequestCardState extends State<_CommissionRequestCard> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: _isUpdating ? null : _markCompleted,
+                  onPressed: _isUpdating
+                      ? null
+                      : () => _updateStatus(
+                          status: 'completed',
+                          successMessage: 'Commission marked as completed.',
+                        ),
                   icon: _isUpdating
                       ? const SizedBox.square(
                           dimension: 16,
@@ -134,27 +237,70 @@ class _CommissionRequestCardState extends State<_CommissionRequestCard> {
                 ),
               ),
             ],
+            if (canAccept || canDecline) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _isUpdating
+                          ? null
+                          : () => _updateStatus(
+                              status: 'cancelled',
+                              successMessage: 'Commission request declined.',
+                            ),
+                      icon: const Icon(Icons.close),
+                      label: const Text('Decline'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _isUpdating
+                          ? null
+                          : () => _updateStatus(
+                              status: 'accepted',
+                              successMessage: 'Commission request accepted.',
+                            ),
+                      icon: _isUpdating
+                          ? const SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.task_alt_outlined),
+                      label: const Text('Accept'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Future<void> _markCompleted() async {
+  Future<void> _updateStatus({
+    required String status,
+    required String successMessage,
+  }) async {
     setState(() => _isUpdating = true);
     try {
+      final payload = <String, dynamic>{
+        'status': status,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      if (status == 'completed') {
+        payload['completed_at'] = DateTime.now().toIso8601String();
+      }
       await Supabase.instance.client
           .from('commission_requests')
-          .update({
-            'status': 'completed',
-            'completed_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
-          })
+          .update(payload)
           .eq('id', widget.request['id']);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Commission marked as completed.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(successMessage)));
       }
     } catch (_) {
       if (mounted) {
@@ -178,14 +324,27 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final completed = status == 'completed';
+    final declined = status == 'cancelled';
     return Chip(
-      label: Text(completed ? 'Completed' : _titleCase(status)),
+      label: Text(
+        completed
+            ? 'Completed'
+            : declined
+            ? 'Declined'
+            : _titleCase(status),
+      ),
       visualDensity: VisualDensity.compact,
       backgroundColor: completed
-          ? const Color(0xFFE7F8EF)
-          : const Color(0xFFFFF7E0),
+          ? const Color(0xFFFFFFFF)
+          : declined
+          ? const Color(0xFFFFFFFF)
+          : const Color(0xFFFFFFFF),
       labelStyle: TextStyle(
-        color: completed ? const Color(0xFF12703A) : const Color(0xFF8A5A00),
+        color: completed
+            ? const Color(0xFF00E200)
+            : declined
+            ? const Color(0xFFFF3838)
+            : const Color(0xFF003566),
         fontWeight: FontWeight.w800,
         fontSize: 12,
       ),

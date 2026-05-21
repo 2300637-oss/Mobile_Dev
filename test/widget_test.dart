@@ -27,6 +27,7 @@ void main() {
     expect(AuthValidators.lnuEmail('artist@lnu.edu.ph'), isNull);
     expect(AuthValidators.password('12345'), isNotNull);
     expect(AuthValidators.password('123456'), isNull);
+    expect(AuthValidators.password('Password1'), isNull);
     expect(AuthValidators.username('ab'), isNotNull);
     expect(AuthValidators.username('artist_01'), isNull);
   });

@@ -4,18 +4,18 @@ class SkillHubProfileColors {
   const SkillHubProfileColors._();
 
   static const navy = Color(0xFF000088);
-  static const midBlue = Color(0xFF0A1B70);
+  static const midBlue = Color(0xFF000088);
   static const inkBlack = Color(0xFF000011);
   static const white = Color(0xFFFFFFFF);
-  static const yellow = Color(0xFFFFC20A);
+  static const yellow = Color(0xFFFFC300);
   static const gold = Color(0xFFFFD60A);
   static const red = Color(0xFFFF3838);
-  static const blueAccent = Color(0xFF2A57DF);
+  static const blueAccent = Color(0xFF003566);
   static const green = Color(0xFF00E200);
-  static const grayBg = Color(0xFFF4F6FC);
-  static const border = Color(0xFFE2E8F0);
-  static const textMain = Color(0xFF1E293B);
-  static const textSub = Color(0xFF64748B);
+  static const grayBg = Color(0xFFFFFFFF);
+  static const border = Color(0xFF003566);
+  static const textMain = Color(0xFF000011);
+  static const textSub = Color(0xFF003566);
 }
 
 BoxDecoration profileCardDecoration({

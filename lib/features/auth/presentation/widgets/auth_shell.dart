@@ -61,7 +61,7 @@ class AuthShell extends StatelessWidget {
                       subtitle,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        color: Color(0xFFDDE7FF),
+                        color: Color(0xFFFFFFFF),
                         fontSize: 14,
                         height: 1.35,
                       ),
@@ -106,10 +106,10 @@ class AuthShell extends StatelessWidget {
           borderRadius: BorderRadius.all(Radius.circular(8)),
           borderSide: BorderSide(color: AppColors.cinnabar, width: 2),
         ),
-        labelStyle: TextStyle(color: Color(0xFF3D4657)),
-        hintStyle: TextStyle(color: Color(0xFF6C7280)),
-        prefixIconColor: Color(0xFF3D4657),
-        suffixIconColor: Color(0xFF3D4657),
+        labelStyle: TextStyle(color: Color(0xFF003566)),
+        hintStyle: TextStyle(color: Color(0xFF003566)),
+        prefixIconColor: Color(0xFF003566),
+        suffixIconColor: Color(0xFF003566),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -170,7 +170,7 @@ class _LnuBadge extends StatelessWidget {
               ),
             ),
             Text(
-              '1901',
+              '1921',
               style: TextStyle(color: AppColors.schoolBusYellow, fontSize: 10),
             ),
           ],
